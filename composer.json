@@ -1,5 +1,6 @@
 {
   "name": "ALC/RestEntityManager",
+  "type": "symfony-bundle",
   "description": "Library to consume webservices based on symfony entities and fosrestbundle.",
   "license": "MIT",
   "authors": [
@@ -14,13 +15,12 @@
     "doctrine/orm": "^2.5",
     "friendsofsymfony/rest-bundle": "^2.3",
     "guzzlehttp/guzzle": "~5.3",
-    "jms/serializer-bundle": "^2.3",
+    "jms/serializer-bundle": "^2.3"
   },
   "keywords": ["REST","API","RestEntity","Restfull","Webservices"],
   "autoload": {
     "psr-4": {
       "ALC\\RestEntityManager\\": ""
     }
-  },
-  "minimum-stability": "dev"
+  }
 }
