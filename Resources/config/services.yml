@@ -1,0 +1,15 @@
+services:
+    alc_rest_entity_manager.handler:
+        class: ALC\RestEntityManagerBundle\Services\RestEntityHandler\RestEntityHandler
+        arguments: ["%alc_rest_entity_manager%", "@session", "%kernel.bundles%", "@jms_serializer", "@request_stack"]
+    alc_rest_entity_manager.jms_event_subscriber:
+        class: ALC\RestEntityManagerBundle\Subscribers\JMSEventSubscriber
+        arguments: ["@request_stack","@jms_serializer.object_constructor"]
+        tags:
+            - { name: 'jms_serializer.event_listener', event: 'serializer.pre_deserialize' }
+            - { name: 'jms_serializer.event_listener', event: 'serializer.pre_serialize' }
+    fos_rest.serializer:
+        class: ALC\RestEntityManagerBundle\Services\Serializer\Serializer
+        arguments:
+            - "@request_stack"
+            - "@jms_serializer.object_constructor"
