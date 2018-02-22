@@ -147,7 +147,7 @@ class JMSEventSubscriber implements EventSubscriberInterface
 
                 foreach( $arrPropertiesAnnotations as $propertyAnnotation ){
 
-                    if( get_class( $propertyAnnotation ) == "ALC\\EntityRestClientBundle\\Annotations\\Field" ){
+                    if( get_class( $propertyAnnotation ) == "ALC\\RestEntityManager\\Annotations\\Field" ){
 
                         $this->fieldsMap[ $property->getName() ] = $propertyAnnotation->getTarget();
                         $this->fieldsType[ $property->getName() ] = $propertyAnnotation->getType();

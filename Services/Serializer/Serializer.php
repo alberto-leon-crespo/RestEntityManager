@@ -53,7 +53,7 @@ class Serializer implements \FOS\RestBundle\Serializer\Serializer
 
                             foreach( $arrPropertiesAnnotations as $propertyAnnotation ){
 
-                                if( get_class( $propertyAnnotation ) == "ALC\\EntityRestClientBundle\\Annotations\\Field" ){
+                                if( get_class( $propertyAnnotation ) == "ALC\\RestEntityManager\\Annotations\\Field" ){
 
                                     $fieldsMap[ $property->getName() ] = $propertyAnnotation->getTarget();
                                     $fieldsType[ $property->getName() ] = $propertyAnnotation->getType();

@@ -40,13 +40,15 @@ class RestEntityHandler extends RestManager
     private $deserilizationFormats = array(
         'application/json' => 'json',
         'application/xml' => 'xml',
-        'application/html' => 'json'
+        'application/html' => 'json',
+        'text/html' => 'xml',
     );
 
     private $serializationFormats = array(
         'application/json' => 'json',
         'application/xml' => 'xml',
-        'application/html' => 'json'
+        'application/html' => 'json',
+        'text/html' => 'xml',
     );
 
     /**
@@ -382,13 +384,13 @@ class RestEntityHandler extends RestManager
 
             foreach( $this->annotationReader->getClassAnnotations( $objClassInstanceReflection ) as $annotation ){
 
-                if( get_class( $annotation ) == "ALC\\EntityRestClientBundle\\Annotations\\Resource" ){
+                if( get_class( $annotation ) == "ALC\\RestEntityManager\\Annotations\\Resource" ){
 
                     $this->path = $annotation->getValue();
 
                 }
 
-                if( get_class( $annotation ) == "ALC\\EntityRestClientBundle\\Annotations\\Headers" ){
+                if( get_class( $annotation ) == "ALC\\RestEntityManager\\Annotations\\Headers" ){
 
                     $this->headers = $annotation->getValues();
 
@@ -408,7 +410,7 @@ class RestEntityHandler extends RestManager
 
                 foreach( $arrPropertiesAnnotations as $propertyAnnotation ){
 
-                    if( get_class( $propertyAnnotation ) == "ALC\\EntityRestClientBundle\\Annotations\\Field" ){
+                    if( get_class( $propertyAnnotation ) == "ALC\\RestEntityManager\\Annotations\\Field" ){
 
                         $this->fieldsMap[ $property->getName() ] = $propertyAnnotation->getTarget();
                         $this->fieldsType[ $property->getName() ] = $propertyAnnotation->getType();
@@ -424,7 +426,7 @@ class RestEntityHandler extends RestManager
                         }
                     }
 
-                    if( get_class( $propertyAnnotation ) == "ALC\\EntityRestClientBundle\\Annotations\\Id" ){
+                    if( get_class( $propertyAnnotation ) == "ALC\\RestEntityManager\\Annotations\\Id" ){
 
                         if( is_object( $classNamespace ) ){
 
