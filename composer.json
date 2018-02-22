@@ -20,7 +20,7 @@
   "keywords": ["REST","API","RestEntity","Restfull","Webservices"],
   "autoload": {
     "psr-4": {
-      "ALC\\RestEntityManager\\": "vendor/ALC/RestEntityManager"
+      "ALC\\RestEntityManager\\": ""
     }
   }
 }
