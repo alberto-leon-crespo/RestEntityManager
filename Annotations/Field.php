@@ -6,7 +6,7 @@
  * Time: 23:46
  */
 
-namespace ALC\RestEntityManagerBundle\Annotations;
+namespace ALC\RestEntityManager\Annotations;
 
 use Doctrine\Common\Annotations\Annotation;
 

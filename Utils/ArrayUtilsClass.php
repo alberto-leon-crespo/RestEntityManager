@@ -6,7 +6,7 @@
  * Time: 3:28
  */
 
-namespace ALC\RestEntityManagerBundle\Utils;
+namespace ALC\RestEntityManager\Utils;
 
 
 abstract class ArrayUtilsClass

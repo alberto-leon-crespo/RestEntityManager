@@ -6,17 +6,17 @@
  * Time: 19:54
  */
 
-namespace ALC\RestEntityManagerBundle\Services\RestEntityHandler;
+namespace ALC\RestEntityManager\Services\RestEntityHandler;
 
-use ALC\EntityRestClientBundle\RestManager;
-use ALC\EntityRestClientBundle\Services\RestEntityHandler\Exception\InvalidParamsException;
-use ALC\EntityRestClientBundle\Utils\ArrayUtilsClass;
+use ALC\RestEntityManager\RestManager;
+use ALC\RestEntityManager\Services\RestEntityHandler\Exception\InvalidParamsException;
+use ALC\RestEntityManager\Utils\ArrayUtilsClass;
 use GuzzleHttp\Message\Response;
 use JMS\Serializer\Serializer;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Doctrine\Common\Annotations\AnnotationReader;
-use ALC\EntityRestClientBundle\Services\RestEntityHandler\Exception\RunTimeException;
+use ALC\RestEntityManager\Services\RestEntityHandler\Exception\RunTimeException;
 
 class RestEntityHandler extends RestManager
 {

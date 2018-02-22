@@ -6,7 +6,7 @@
  * Time: 6:16
  */
 
-namespace ALC\RestEntityManagerBundle\Subscribers;
+namespace ALC\RestEntityManager\Subscribers;
 
 
 use Doctrine\Common\Annotations\AnnotationReader;

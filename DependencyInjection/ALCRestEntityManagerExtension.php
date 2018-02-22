@@ -1,6 +1,6 @@
 <?php
 
-namespace ALC\RestEntityManagerBundle\DependencyInjection;
+namespace ALC\RestEntityManager\DependencyInjection;
 
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\Config\FileLocator;

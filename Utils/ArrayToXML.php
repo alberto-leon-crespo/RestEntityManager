@@ -6,7 +6,7 @@
  * Time: 12:45
  */
 
-namespace ALC\RestEntityManagerBundle\Utils;
+namespace ALC\RestEntityManager\Utils;
 
 class ArrayToXML extends \DOMDocument
 {

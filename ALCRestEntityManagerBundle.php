@@ -1,6 +1,6 @@
 <?php
 
-namespace ALC\RestEntityManagerBundle;
+namespace ALC\RestEntityManager;
 
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 

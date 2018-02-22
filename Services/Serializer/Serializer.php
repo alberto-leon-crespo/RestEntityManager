@@ -6,7 +6,7 @@
  * Time: 2:49
  */
 
-namespace ALC\RestEntityManagerBundle\Services\Serializer;
+namespace ALC\RestEntityManager\Services\Serializer;
 
 use ALC\RestEntityManagerBundle\Utils\ArrayUtilsClass;
 use FOS\RestBundle\Context\Context;

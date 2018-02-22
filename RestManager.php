@@ -6,7 +6,7 @@
  * Time: 20:57
  */
 
-namespace ALC\RestEntityManagerBundle;
+namespace ALC\RestEntityManager;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;

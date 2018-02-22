@@ -6,7 +6,7 @@
  * Time: 1:13
  */
 
-namespace ALC\RestEntityManagerBundle\Services\RestEntityHandler\Exception;
+namespace ALC\RestEntityManager\Services\RestEntityHandler\Exception;
 
 use Symfony\Component\HttpKernel\Exception\HttpException;
 

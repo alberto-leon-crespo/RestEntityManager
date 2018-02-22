@@ -1,6 +1,6 @@
 <?php
 
-namespace ALC\RestEntityManagerBundle\DependencyInjection;
+namespace ALC\RestEntityManager\DependencyInjection;
 
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -18,7 +18,7 @@ class Configuration implements ConfigurationInterface
     public function getConfigTreeBuilder()
     {
         $treeBuilder = new TreeBuilder();
-        $rootNode = $treeBuilder->root('alc_entity_rest_client');
+        $rootNode = $treeBuilder->root('alc_rest_entity_manager');
 
         $rootNode
             ->children()
