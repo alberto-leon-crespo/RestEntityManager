@@ -9,8 +9,10 @@
 namespace ALC\RestEntityManager\Services\RestEntityHandler;
 
 use ALC\RestEntityManager\RestManager;
+use ALC\RestEntityManager\Services\RestEntityHandler\Exception\HttpError;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\InvalidParamsException;
 use ALC\RestEntityManager\Utils\ArrayUtilsClass;
+use ALC\RestEntityManager\Utils\HttpConstants;
 use GuzzleHttp\Message\Response;
 use JMS\Serializer\Serializer;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -483,6 +485,12 @@ class RestEntityHandler extends RestManager
             if( $detectedFormat === false ){
 
                 throw new RunTimeException(400, "Unserialized format <" . $response->getHeader('content-type') . "> is not supported.", null, $response->getHeaders(), 0 );
+
+            }
+
+            if( !in_array( $response->getStatusCode(), HttpConstants::$sucessResponses ) ){
+
+                throw new HttpError($response->getStatusCode(), $this->lastRequestException->getMessage(), $this->lastRequestException, $this->lastRequestException->getResponse()->getHeaders(), $this->lastRequestException->getCode() );
 
             }
 

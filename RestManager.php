@@ -16,6 +16,11 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 abstract class RestManager
 {
     protected $config;
+
+    /**
+     * @var $lastRequestException RequestException
+     */
+    protected $lastRequestException;
     private $session;
     private $guzzleHttpClient;
     private $guzzleHttpConnections;
@@ -79,6 +84,8 @@ abstract class RestManager
             return $objResponse;
 
         }catch ( RequestException $requestException ){
+
+            $this->lastRequestException = $requestException;
 
             return $requestException->getResponse();
 
