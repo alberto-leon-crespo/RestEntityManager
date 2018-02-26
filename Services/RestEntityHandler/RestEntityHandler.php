@@ -34,6 +34,7 @@ class RestEntityHandler extends RestManager
     private $fieldsValues;
     private $entityIdValue;
     private $entityIdFieldName;
+    private $entityRepository;
 
     private $headers = array(
         'content-type' => 'application/json'
@@ -132,8 +133,54 @@ class RestEntityHandler extends RestManager
 
         $this->readClassAnnotations( $classNamespace );
 
+        $respositoryInstance = new $this->entityRepository( $this->config, $this->session, $this->serializer );
+
+        $reflectionClass = new \ReflectionClass( $respositoryInstance );
+
+        $methods = $reflectionClass->getMethods();
+
+        foreach( $methods as $method ){
+
+            if( $method->isPublic() ){
+
+                $this->{$method->getName()} = function( $value = array() ) use ( $respositoryInstance, $method ){
+
+                    $closure = $method->getClosure( $respositoryInstance );
+
+                    $parameters = $method->getParameters();
+
+                    $arrArgs = array();
+
+                    foreach( $parameters as $reflectionParameter ){
+
+                        $arrArgs[] = $reflectionParameter->getName();
+
+                    }
+
+                    if( is_callable( $closure ) ){
+
+                        return call_user_func_array( $closure, $arrArgs );
+
+                    }
+
+
+                };
+
+            }
+
+        }
+
         return $this;
 
+    }
+
+    public function __call( $method, $arguments = array() )
+    {
+        if( is_callable( array( $this, $method ) ) ){
+
+            return call_user_func_array( $this->$method, $arguments );
+
+        }
     }
 
     /**
@@ -395,6 +442,12 @@ class RestEntityHandler extends RestManager
                 if( get_class( $annotation ) == "ALC\\RestEntityManager\\Annotations\\Headers" ){
 
                     $this->headers = $annotation->getValues();
+
+                }
+
+                if( get_class( $annotation ) == "ALC\\RestEntityManager\\Annotations\\Repository" ){
+
+                    $this->entityRepository = $annotation->getRepositoryClass();
 
                 }
 

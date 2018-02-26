@@ -49,7 +49,7 @@ abstract class RestManager
      * @param array $arrHeaders
      * @return \GuzzleHttp\Message\Request|\GuzzleHttp\Message\RequestInterface|\GuzzleHttp\Message\ResponseInterface|null
      */
-    public function doRequest( $strPath, $strMethod, $arrParams = array(), array $arrHeaders = array() ){
+    protected function doRequest( $strPath, $strMethod, $arrParams = array(), array $arrHeaders = array() ){
 
         $arrGuzzleHttpOptions = array();
 
