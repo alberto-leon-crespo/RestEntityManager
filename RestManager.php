@@ -190,4 +190,22 @@ abstract class RestManager
         return $this->doRequest( $path, 'DELETE', array(), $arrHeaders );
 
     }
+
+    protected function getConfigParams(){
+
+        return $this->config;
+
+    }
+
+    protected function getConfigParam( $strParamName ){
+
+        if( array_key_exists( $strParamName, $this->config ) ){
+
+            return $this->config[ $strParamName ];
+
+        }
+
+        return null;
+
+    }
 }
