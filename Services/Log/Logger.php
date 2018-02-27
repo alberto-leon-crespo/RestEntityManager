@@ -14,16 +14,18 @@ use Monolog\Handler\StreamHandler;
 
 class Logger
 {
-    private $logger;
+    private $loggers;
 
     public function __construct( array $restEntityManagerConfig, $strKernelLogDir )
     {
-        $this->logger = new MonologLogger('rest_entity_manager_logger');
-        
+
         foreach( $restEntityManagerConfig['managers'] as $managerName => $manager ){
-            
+
+            $this->loggers[ $managerName ] = new MonologLogger( 'rest_entity_manager_' . $managerName );
+
             $logHandler = new StreamHandler( $strKernelLogDir . "/rest_entity_" . $managerName . ".log", MonologLogger::INFO, true );
-            $this->logger->pushHandler( $logHandler );
+
+            $this->loggers[ $managerName ]->pushHandler( $logHandler );
             
         }
 
@@ -33,9 +35,9 @@ class Logger
     /**
      * @return MonologLogger
      */
-    public function getLogger(){
+    public function getLogger( $loggerName ){
 
-        return $this->logger;
+        return array_key_exists( $loggerName, $this->loggers ) ? $this->loggers[ $loggerName ] : null;
 
     }
 }

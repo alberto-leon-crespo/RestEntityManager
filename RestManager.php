@@ -256,7 +256,12 @@ abstract class RestManager
 
         $jsonFormatter = new JsonFormatter();
 
-        $this->logger->getLogger()->info( $jsonFormatter->format( $arrRequest ) );
+        if( !empty( $this->logger->getLogger( $this->config['name'] ) ) ){
+
+            $this->logger->getLogger( $this->config['name'] )->info( $jsonFormatter->format( $arrRequest ) );
+
+        }
+
     }
 
     private function isJson($string) {
