@@ -8,9 +8,11 @@
 
 namespace ALC\RestEntityManager;
 
+use ALC\RestEntityManager\Services\Log\Logger;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Exception\RequestException;
+use Monolog\Formatter\JsonFormatter;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 abstract class RestManager
@@ -25,11 +27,23 @@ abstract class RestManager
     private $guzzleHttpClient;
     private $guzzleHttpConnections;
     private $guzzleHttpCookieJar;
+    private $logger;
 
-    protected function __construct( array $config, SessionInterface $session ){
+    /**
+     * @var $requestLog \GuzzleHttp\Message\RequestInterface
+     */
+    private $requestLog;
+
+    /**
+     * @var $responseLog \GuzzleHttp\Message\ResponseInterface
+     */
+    private $responseLog;
+
+    protected function __construct( array $config, SessionInterface $session, Logger $logger ){
 
         $this->config = $config;
         $this->session = $session;
+        $this->logger = $logger;
 
         $this->guzzleHttpConnections = $this->session->get('alc_entity_rest_client.active_connections');
         $this->guzzleHttpCookieJar = ( $this->guzzleHttpConnections !== null && array_key_exists( $this->config['session_name'], $this->guzzleHttpConnections ) ) ? $this->guzzleHttpConnections[ $this->config['session_name'] ] : new CookieJar();
@@ -79,13 +93,25 @@ abstract class RestManager
 
             $objRequest = $this->guzzleHttpClient->createRequest( $strMethod, $this->config['host'] . $strPath, $arrGuzzleHttpOptions );
 
+            $this->requestLog = $objRequest;
+
             $objResponse = $this->guzzleHttpClient->send( $objRequest );
+
+            $this->responseLog = $objResponse;
+
+            $this->writeLog();
 
             return $objResponse;
 
         }catch ( RequestException $requestException ){
 
             $this->lastRequestException = $requestException;
+
+            $this->requestLog = $requestException->getRequest();
+
+            $this->responseLog = $requestException->getResponse();
+
+            $this->writeLog();
 
             return $requestException->getResponse();
 
@@ -189,5 +215,57 @@ abstract class RestManager
 
         return $this->doRequest( $path, 'DELETE', array(), $arrHeaders );
 
+    }
+
+    protected function getConfigParams(){
+
+        return $this->config;
+
+    }
+
+    protected function getConfigParam( $strParamName ){
+
+        if( array_key_exists( $strParamName, $this->config ) ){
+
+            return $this->config[ $strParamName ];
+
+        }
+
+        return null;
+
+    }
+
+    private function writeLog(){
+
+        $date = new \DateTime();
+
+        $arrRequest = array(
+            'request' => array(
+                'uri' => $this->requestLog->getHost() . $this->requestLog->getPath(),
+                'headers' => $this->requestLog->getHeaders(),
+                'method' => $this->requestLog->getMethod(),
+                'body' => ( $this->isJson( (string)$this->responseLog->getBody() ) ) ? json_decode( (string)$this->requestLog->getBody() ) : (string)$this->requestLog->getBody(),
+                'query' => $this->requestLog->getQuery()
+            ),
+            'response' => array(
+                'status' => $this->responseLog->getStatusCode(),
+                'headers' => $this->responseLog->getHeaders(),
+                'body' => ( $this->isJson( (string)$this->responseLog->getBody() ) ) ? json_decode( (string)$this->responseLog->getBody() ) : (string)$this->responseLog->getBody()
+            )
+        );
+
+        $jsonFormatter = new JsonFormatter();
+
+        if( !empty( $this->logger->getLogger( $this->config['name'] ) ) ){
+
+            $this->logger->getLogger( $this->config['name'] )->info( $jsonFormatter->format( $arrRequest ) );
+
+        }
+
+    }
+
+    private function isJson($string) {
+        json_decode($string);
+        return (json_last_error() == JSON_ERROR_NONE);
     }
 }
