@@ -9,6 +9,7 @@
 namespace ALC\RestEntityManager\Services\RestEntityHandler;
 
 use ALC\RestEntityManager\RestManager;
+use ALC\RestEntityManager\Services\Log\Logger;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\HttpError;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\InvalidParamsException;
 use ALC\RestEntityManager\Utils\ArrayUtilsClass;
@@ -35,6 +36,7 @@ class RestEntityHandler extends RestManager
     private $entityIdValue;
     private $entityIdFieldName;
     private $entityRepository;
+    private $logger;
 
     private $headers = array(
         'content-type' => 'application/json'
@@ -62,9 +64,9 @@ class RestEntityHandler extends RestManager
      * @param Serializer $serializer
      * @param RequestStack $requestStack
      */
-    public function __construct( array $config, SessionInterface $session, array $bundles, Serializer $serializer, RequestStack $requestStack ){
+    public function __construct( array $config, SessionInterface $session, array $bundles, Serializer $serializer, RequestStack $requestStack, Logger $logger ){
 
-        parent::__construct( $config['managers'][ $config['default_manager'] ], $session );
+        parent::__construct( $config['managers'][ $config['default_manager'] ], $session, $logger );
 
         $this->bundleConfig = $config;
         $this->session = $session;
@@ -72,6 +74,7 @@ class RestEntityHandler extends RestManager
         $this->serializer = $serializer;
         $this->attibutesBag = $requestStack->getMasterRequest()->attributes;
         $this->annotationReader = new AnnotationReader();
+        $this->logger = $logger;
 
         return $this;
 
@@ -133,7 +136,7 @@ class RestEntityHandler extends RestManager
 
         $this->readClassAnnotations( $classNamespace );
 
-        $respositoryInstance = new $this->entityRepository( $this->config, $this->session, $this->serializer );
+        $respositoryInstance = new $this->entityRepository( $this->config, $this->session, $this->serializer, $this->logger );
 
         $reflectionClass = new \ReflectionClass( $respositoryInstance );
 

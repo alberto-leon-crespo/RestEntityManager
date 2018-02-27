@@ -30,7 +30,6 @@ class Configuration implements ConfigurationInterface
                     ->children()
                         ->scalarNode('name')->end()
                         ->scalarNode('host')->end()
-                        ->scalarNode('session_name')->end()
                         ->scalarNode('session_timeout')->defaultValue(3600)->end()
                         ->variableNode('custom_params')->end()
                     ->end()
