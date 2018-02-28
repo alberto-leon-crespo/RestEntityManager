@@ -78,9 +78,6 @@ alc_rest_entity_manager:
     Permite especificar un array de cabeceras http y los valores que se aplicaran a las solicitudes rest de la entidad.
 
 ```php
-
-namespace AppBundle\Entity
-
 <?php
 
 namespace ALC\WebServiceBundle\Entity\Users;
@@ -137,7 +134,7 @@ $arrResponse = $objUsersRespository->find( $userId, 'object', 'ALC\\WebServiceBu
 
 ```
 
-### Recuperar un listado
+### Recuperar todos los registros de un listado
 
 Equivalente a GET /users
 
@@ -171,6 +168,10 @@ Equivalente a GET /users?nombre=Alberto
 
 ```php
 
+$arrFilters = array(
+    'nombre' => 'Jhon'
+);
+
 $objUsersRepository = $this
     ->get('alc_rest_entity_manager.handler')
     ->getManager('default')
@@ -180,7 +181,7 @@ $arrResponse = $objUsersRespository->findBy( $arrFilters, 'object', 'ALC\\WebSer
 
 ```
 
-### Recuperar el primer registro filtrado
+### Recuperar el primer registro de un listado filtrado
 
 Equivalente a GET /users?nombre=Alberto
 
@@ -192,6 +193,10 @@ Equivalente a GET /users?nombre=Alberto
 * type: tipo de objeto de salida si se indico en format `object`.
 
 ```php
+
+$arrFilters = array(
+    'nombre' => 'Jhon'
+);
 
 $objUsersRepository = $this
     ->get('alc_rest_entity_manager.handler')
