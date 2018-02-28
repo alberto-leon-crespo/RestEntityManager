@@ -110,9 +110,9 @@ class Users
 }
 ```
 
-## Acciones generales del manager rest
+# Acciones generales del manager rest
 
-### Buscar por id
+## Buscar por id
 
 Equivalente a GET /users/:id
 
@@ -121,7 +121,7 @@ Equivalente a GET /users/:id
     * json
     * xml
     * object
-* type: tipo de objeto de salida si se indico en format `object`.
+* type: tipo de dato de salida si se indico en format `object`.
 
 ```php
 
@@ -134,7 +134,7 @@ $arrResponse = $objUsersRespository->find( $userId, 'object', 'ALC\\WebServiceBu
 
 ```
 
-### Recuperar todos los registros de un listado
+## Recuperar todos los registros de un listado
 
 Equivalente a GET /users
 
@@ -142,7 +142,7 @@ Equivalente a GET /users
     * json
     * xml
     * object
-* type: tipo de objeto de salida si se indico en format `object`.
+* type: tipo de dato de salida si se indico en format `object`.
 
 ```php
 
@@ -155,7 +155,7 @@ $arrResponse = $objUsersRespository->findAll( 'object', 'ALC\\WebServiceBundle\\
 
 ```
 
-### Recuperar un listado filtrado
+## Recuperar un listado filtrado
 
 Equivalente a GET /users?nombre=Alberto
 
@@ -164,7 +164,7 @@ Equivalente a GET /users?nombre=Alberto
     * json
     * xml
     * object
-* type: tipo de objeto de salida si se indico en format `object`.
+* type: tipo de dato de salida si se indico en format `object`.
 
 ```php
 
@@ -181,7 +181,7 @@ $arrResponse = $objUsersRespository->findBy( $arrFilters, 'object', 'ALC\\WebSer
 
 ```
 
-### Recuperar el primer registro de un listado filtrado
+## Recuperar el primer registro de un listado filtrado
 
 Equivalente a GET /users?nombre=Alberto
 
@@ -190,7 +190,7 @@ Equivalente a GET /users?nombre=Alberto
     * json
     * xml
     * object
-* type: tipo de objeto de salida si se indico en format `object`.
+* type: tipo de dato de salida si se indico en format `object`.
 
 ```php
 
@@ -207,7 +207,7 @@ $arrResponse = $objUsersRespository->findOneBy( $arrFilters, 'object', 'ALC\\Web
 
 ```
 
-### Guardar los cambios
+## Guardar los cambios
 
 Equivalente a POST /users o PUT /users
 
@@ -218,7 +218,7 @@ Si el objeto de entidad tiene un valor asociado en el campo marcado como id, rea
     * json
     * xml
     * object
-* type: tipo de objeto de salida si se indico en format `object`.
+* type: tipo de dato de salida si se indico en format `object`.
 
 ```php
 
@@ -235,7 +235,7 @@ $arrResponse = $em->persist( $objUser, 'object', 'ALC\\WebServiceBundle\\Entity\
 
 ```
 
-### Comprobar si existe un registro, si existe lo actualiza, en caso contrario lo crea.
+## Comprobar si existe un registro, si existe lo actualiza, en caso contrario lo crea.
 
 Equivalente a POST /users o PUT /users
 
@@ -246,9 +246,14 @@ Si el objeto de entidad tiene un valor asociado en el campo marcado como id y ad
     * json
     * xml
     * object
-* type: tipo de objeto de salida si se indico en format `object`.
+* type: tipo de dato de salida si se indico en format `object`.
 
 ```php
+
+$objUser = new \AppBundle\Users();
+
+$objUser->setNombre("Jhon");
+$objUser->setApellido("Doe");
 
 $em = $this
     ->get('alc_rest_entity_manager.handler')
@@ -257,3 +262,103 @@ $em = $this
 $arrResponse = $em->merge( $objUser, 'object', 'ALC\\WebServiceBundle\\Entity\\Users\\Users' );
 
 ```
+
+## Obtener la información de una entidad con los valores actualizados del webservice
+
+* object: instancia de la entidad que se quiere refrescar.
+* format: formato de salida de la información.
+    * json
+    * xml
+    * object
+* type: tipo de dato de salida si se indico en format `object`.
+
+```php
+
+$objUser = new \AppBundle\Users();
+
+$objUser->setIdUsuario(2);
+
+$em = $this
+    ->get('alc_rest_entity_manager.handler')
+    ->getManager('default');
+
+$arrResponse = $em->refresh( $objUser, 'object', 'ALC\\WebServiceBundle\\Entity\\Users\\Users' );
+
+```
+
+# Acciones personalizadas del manager rest
+
+Cuando por diferentes circustancias cualquiera de estas acciones estandar no funcional para tu caso de uso,
+puedes realizar una llamada totalmente personalizada por medio de un repositorio o realizando la acción directamente en el controlador
+como si se tratara de un cliente rest normal.
+
+## Con un repositorio
+
+Es importante definir la anotacion "Repository" en la entidad rest.
+
+```php
+
+// Repository
+
+namespace AppBundle\Entity\Users;
+
+use ALC\RestEntityManager\RestRepository;
+
+class UsersRepository extends RestRepository
+{
+    public function listadoUsuariosWithVocalA(){
+
+        $response = $this->get( 'users', array() );
+
+        $arrUsers = $this->serializer->deserialize( $response->getBody()->getContents(), 'array<ALC\WebServiceBundle\Entity\Users\Users>', 'json' );
+
+        foreach( $arrUsers as $key => $objUser ){
+
+            if( mb_strpos( $objUser->getNombre(), 'a', null, 'utf8' ) === false ){
+
+                unset( $arrUsers[$key] );
+
+            }
+
+        }
+
+        return array_values( $arrUsers );
+
+    }
+}
+
+// Controller
+
+<?php
+
+namespace ALC\WebServiceBundle\Controller;
+
+use FOS\RestBundle\Controller\FOSRestController;
+use FOS\RestBundle\View\View;
+use Symfony\Component\HttpFoundation\Request;
+
+class UsersController extends FOSRestController
+{
+    public function getUsersAction(Request $objRequest){
+
+        $objEntityManager = $this->get('alc_rest_entity_manager.handler')->getManager();
+
+        /**
+         * @var $objUsersRespository \ALC\RestEntityManager\Services\RestEntityHandler\RestEntityHandler|\ALC\WebServiceBundle\Entity\Users\UsersRepository
+         */
+        $objUsersRespository = $objEntityManager->getRepository('ALCWebServiceBundle:Users\Users');
+
+        $arrUsersWithAVocal = $objEntityManager->listadoUsuariosWithVocalA();
+
+        // If use FOSRestBundle
+        return $arrUsersWithAVocal;
+
+        // If dont use FOSRestBundle
+
+        $strUsersSerialized = $this->get('fos_rest.serializer')->serialize( $arrUsersWithAVocal, 'json' );
+
+        $objResponse = new Response( $strUsersSerialized, 200, ['Content-Type'=>200] );
+
+        return $objResponse;
+```
+
