@@ -125,6 +125,8 @@ Equivalente a GET /users/:id
 
 ```php
 
+<?php
+
 $objUsersRepository = $this
     ->get('alc_rest_entity_manager.handler')
     ->getManager('default')
@@ -145,6 +147,8 @@ Equivalente a GET /users
 * type: tipo de dato de salida si se indico en format `object`.
 
 ```php
+
+<?php
 
 $objUsersRepository = $this
     ->get('alc_rest_entity_manager.handler')
@@ -167,6 +171,8 @@ Equivalente a GET /users?nombre=Alberto
 * type: tipo de dato de salida si se indico en format `object`.
 
 ```php
+
+<?php
 
 $arrFilters = array(
     'nombre' => 'Jhon'
@@ -193,6 +199,8 @@ Equivalente a GET /users?nombre=Alberto
 * type: tipo de dato de salida si se indico en format `object`.
 
 ```php
+
+<?php
 
 $arrFilters = array(
     'nombre' => 'Jhon'
@@ -222,6 +230,8 @@ Si el objeto de entidad tiene un valor asociado en el campo marcado como id, rea
 
 ```php
 
+<?php
+
 $objUser = new \AppBundle\Users();
 
 $objUser->setNombre("Jhon");
@@ -250,6 +260,8 @@ Si el objeto de entidad tiene un valor asociado en el campo marcado como id y ad
 
 ```php
 
+<?php
+
 $objUser = new \AppBundle\Users();
 
 $objUser->setNombre("Jhon");
@@ -273,6 +285,7 @@ $arrResponse = $em->merge( $objUser, 'object', 'ALC\\WebServiceBundle\\Entity\\U
 * type: tipo de dato de salida si se indico en format `object`.
 
 ```php
+<?php
 
 $objUser = new \AppBundle\Users();
 
@@ -297,6 +310,8 @@ como si se tratara de un cliente rest normal.
 Es importante definir la anotacion "Repository" en la entidad rest.
 
 ```php
+
+<?php
 
 // Repository
 
