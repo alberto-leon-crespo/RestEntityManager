@@ -1,5 +1,5 @@
 {
-  "name": "alberto-leon-crespo/RestEntityManager",
+  "name": "alberto-leon-crespo/rest-entity-manager",
   "type": "symfony-bundle",
   "description": "Library to consume webservices based on symfony entities and fosrestbundle.",
   "license": "MIT",
