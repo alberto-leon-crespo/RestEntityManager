@@ -31,12 +31,16 @@ del manager.
 
 Este es un bundle pensado para funcionar junto con "FOSRestBundle", pero tambien se puede usar sin el.
 
+# Instalación
+
+
+
 # Configuracion
 
 Para poder usar las entidadedes orientadas a rest es necesario configurar previamente una conexion rest.
 
 ```yml
-// app/config/config.yml
+# app/config/config.yml
 
 alc_rest_entity_manager:
     default_manager: default # El nombre de la conexion que usara el manager por defecto.
@@ -48,6 +52,16 @@ alc_rest_entity_manager:
             custom_params: # Bloque de parametros de configuración personalizables
                 client_id: ko_0vYcw02JxiMGZ7vSADPOSH-fSDRgSsPJWmYFXu4v437hEk2ELFLOGLBlmY2UWLWMnq
                 client_secret: rl_0vYcwJKtCKicRw5gaD55ux
+```
+
+Si quieres usar el serializador junto con FOSRestBundle es necesario que sobreescribas el serializador estandar con la siguiente configuración.
+
+```yml
+# app/config/config.yml
+
+fos_rest:
+    service:
+        serializer: alc_rest_entity_manager.serializer
 ```
 
 ## Anotaciones de configuración para las entidades.
@@ -349,7 +363,6 @@ class UsersRepository extends RestRepository
 namespace ALC\WebServiceBundle\Controller;
 
 use FOS\RestBundle\Controller\FOSRestController;
-use FOS\RestBundle\View\View;
 use Symfony\Component\HttpFoundation\Request;
 
 class UsersController extends FOSRestController
@@ -370,10 +383,13 @@ class UsersController extends FOSRestController
 
         // If dont use FOSRestBundle
 
-        $strUsersSerialized = $this->get('fos_rest.serializer')->serialize( $arrUsersWithAVocal, 'json' );
+        $strUsersSerialized = $this->get('alc_rest_entity_manager.serializer')->serialize( $arrUsersWithAVocal, 'json' );
 
-        $objResponse = new Response( $strUsersSerialized, 200, ['Content-Type'=>200] );
+        $objResponse = new Response( $strUsersSerialized, 200, ['Content-Type'=>'application/json'] );
 
         return $objResponse;
 ```
 
+# Ejemplos
+
+Para ver mas ejemplos puedes consultar el bundle de ejemplo ALC\WebServiceBundle
