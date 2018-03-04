@@ -1,0 +1,26 @@
+{
+  "name": "alberto-leon-crespo/rest-entity-manager",
+  "type": "symfony-bundle",
+  "description": "Library to consume webservices based on symfony entities and fosrestbundle.",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Alberto León Crespo",
+      "email": "alberto.leon.crespo@gmail.com"
+    }
+  ],
+  "require": {
+    "php": ">=5.4",
+    "doctrine/doctrine-bundle": "^1.6",
+    "doctrine/orm": "^2.5",
+    "friendsofsymfony/rest-bundle": "^2.3",
+    "guzzlehttp/guzzle": "~5.3",
+    "jms/serializer-bundle": "^2.3"
+  },
+  "keywords": ["REST","API","RestEntity","Restfull","Webservices"],
+  "autoload": {
+    "psr-4": {
+      "ALC\\RestEntityManager\\": ""
+    }
+  }
+}
