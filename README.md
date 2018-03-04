@@ -33,7 +33,35 @@ Este es un bundle pensado para funcionar junto con "FOSRestBundle", pero tambien
 
 # Instalación
 
+## Paso 1: Descargar el bundle
 
+Abre la consola de comandos, entra en el directorio de tu proyecto y ejecuta el siguiente comando para descargar la
+ultima version estable de este bundle.
+
+`$ composer require alberto-leon-crespo/rest-entity-manager`
+
+## Paso 2: Activar el bundle
+
+Activa el bundle añadiendo la siguiente linea al fichero `app/AppKernel.php`
+
+```php
+<?php
+// app/AppKernel.php
+
+// ...
+class AppKernel extends Kernel
+{
+    public function registerBundles()
+    {
+        $bundles = array(
+            // ...
+            new ALC\RestEntityManager\ALCRestEntityManagerBundle(),
+        );
+
+        // ...
+    }
+}
+```
 
 # Configuracion
 
