@@ -420,4 +420,4 @@ class UsersController extends FOSRestController
 
 # Ejemplos
 
-Para ver mas ejemplos puedes consultar el bundle de ejemplo [ALC\WebServiceBundle](https://github.com/alberto-leon-crespo/rest-entity-manager)
+Para ver mas ejemplos puedes consultar el bundle de ejemplo [ALC\WebServiceBundle](https://github.com/alberto-leon-crespo/WebServiceBundle)
