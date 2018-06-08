@@ -14,6 +14,7 @@ use ALC\RestEntityManager\Services\RestEntityHandler\Exception\HttpError;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\InvalidParamsException;
 use ALC\RestEntityManager\Utils\ArrayUtilsClass;
 use ALC\RestEntityManager\Utils\HttpConstants;
+use Arrayy\Arrayy;
 use GuzzleHttp\Message\Response;
 use JMS\Serializer\Serializer;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -37,6 +38,8 @@ class RestEntityHandler extends RestManager
     private $entityIdFieldName;
     private $entityRepository;
     private $logger;
+    private $arrayMatchedParams;
+    private $entityFinalFilterPath;
 
     private $headers = array(
         'content-type' => 'application/json'
@@ -209,9 +212,13 @@ class RestEntityHandler extends RestManager
      */
     public function findBy( array $arrFilters, $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $arrParams = $this->matchEntityFieldsWithResourceFields( $arrFilters );
+        $this->arrayMatchedParams = [];
 
-        $response = $this->get( $this->path, $arrParams, $this->headers );
+        $this->matchEntityFieldsWithResourceFields( $arrFilters );
+
+        $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFilters );
+
+        $response = $this->get( $this->path, $this->arrayMatchedParams, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -225,9 +232,13 @@ class RestEntityHandler extends RestManager
      */
     public function findOneBy( array $arrFilters, $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $arrParams = $this->matchEntityFieldsWithResourceFields( $arrFilters );
+        $this->arrayMatchedParams = [];
 
-        $response = $this->get( $this->path, $arrParams, $this->headers );
+        $this->matchEntityFieldsWithResourceFields( $arrFilters );
+
+        $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFilters );
+
+        $response = $this->get( $this->path, $this->arrayMatchedParams, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray )[0];
     }
@@ -432,6 +443,10 @@ class RestEntityHandler extends RestManager
 
         $objClassInstanceReflection = new \ReflectionClass( $classNamespace );
 
+        $this->fieldsType = [];
+        $this->fieldsMap = [];
+        $this->fieldsValues = [];
+
         if( !empty( $this->annotationReader->getClassAnnotations( $objClassInstanceReflection ) ) ){
 
             foreach( $this->annotationReader->getClassAnnotations( $objClassInstanceReflection ) as $annotation ){
@@ -572,20 +587,95 @@ class RestEntityHandler extends RestManager
 
     }
 
-    private function matchEntityFieldsWithResourceFields( $array ){
-
-        $arrayMatchedParams = array();
+    private function matchEntityFieldsWithResourcesFieldsRecursive( $array ){
 
         foreach( $array as $propertyName => $value ){
 
-            if( array_key_exists( $propertyName, $this->fieldsMap ) ){
+            $path = explode( ".", $propertyName );
 
-                $arrayMatchedParams[ $this->fieldsMap[ $propertyName ] ] = $value;
+            $field = array_shift( $path );
+
+            if( strpos( $propertyName, "." ) !== false ){
+
+                if( !empty( $field ) ){
+
+                    if( array_key_exists( $field, $this->fieldsMap ) ){
+
+                        if( class_exists( $this->fieldsType[$field] ) ){
+
+                            $this->entityFinalFilterPath .= ( strpos( $this->entityFinalFilterPath, "." ) === false ) ? $this->fieldsMap[$field] : "." . $this->fieldsMap[$field];
+
+                            $this->readClassAnnotations( $this->fieldsType[$field] );
+
+                            $array = array(
+                                implode( ".", $path ) => $value
+                            );
+
+                            $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
+
+                        }else{
+
+                            if( array_key_exists( $field, $this->fieldsMap ) ){
+
+                                $this->entityFinalFilterPath .= "." . $this->fieldsMap[ $field ];
+
+                                $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
+
+                            }
+
+                            $this->readClassAnnotations( $this->fieldsType[$field] );
+
+                            $array = array(
+                                implode( ".", $path ) => $value
+                            );
+
+                            $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
+
+                        }
+
+                    }
+
+                }
+
+            }else{
+
+                if( array_key_exists( $field, $this->fieldsMap ) ){
+
+                    $this->entityFinalFilterPath .= "." . $this->fieldsMap[ $field ];
+
+                    $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
+
+                }
 
             }
 
         }
 
-        return $arrayMatchedParams;
+        return $this->arrayMatchedParams;
+    }
+
+    private function matchEntityFieldsWithResourceFields( $array ){
+
+        foreach( $array as $propertyName => $value ){
+
+            if( array_key_exists( $propertyName, $this->fieldsMap ) ){
+
+                $this->arrayMatchedParams[ $this->fieldsMap[ $propertyName ] ] = $value;
+
+            }
+
+        }
+
+        return $this->arrayMatchedParams;
+    }
+
+    private function setValue(array &$arr, $path,$val)
+    {
+        $loc = &$arr;
+        foreach(explode('.', $path) as $step)
+        {
+            $loc = &$loc[$step];
+        }
+        return $loc = $val;
     }
 }
