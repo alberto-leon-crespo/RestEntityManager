@@ -22,7 +22,7 @@ diferentes webservices.
 de las diferentes conexiones y cargarla en el el cliente rest.
 * *alc_rest_entity_manager.jms_event_subscriber*: Se encarga de leer la configuracion de las entidades y
  configurar el mapeo hacia los diferentes WS rest.
-* *fos_rest.serializer*: Es el serializador encargado de mapear la información que envian y reciben los clientes
+* *alc_rest_entity_manager.serializer*: Es el serializador encargado de mapear la información que envian y reciben los clientes
 en las diferentes entidades de la API.
 * *alc_rest_entity_manager.logger*: Servicio encargado de monitorizar y escribir los logs de las peticiones rest
 del manager.
@@ -420,4 +420,4 @@ class UsersController extends FOSRestController
 
 # Ejemplos
 
-Para ver mas ejemplos puedes consultar el bundle de ejemplo [ALC\WebServiceBundle](https://github.com/alberto-leon-crespo/rest-entity-manager)
+Para ver mas ejemplos puedes consultar el bundle de ejemplo [ALC\WebServiceBundle](https://github.com/alberto-leon-crespo/WebServiceBundle)

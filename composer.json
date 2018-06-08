@@ -16,7 +16,7 @@
     "friendsofsymfony/rest-bundle": "^2.3",
     "guzzlehttp/guzzle": "~5.3",
     "jms/serializer-bundle": "^2.3",
-    "voku/arrayy": "5.*"
+    "voku/arrayy": "3.8"
   },
   "keywords": ["REST","API","RestEntity","Restfull","Webservices"],
   "autoload": {
