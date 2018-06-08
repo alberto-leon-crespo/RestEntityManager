@@ -603,7 +603,7 @@ class RestEntityHandler extends RestManager
 
                         if( class_exists( $this->fieldsType[$field] ) ){
 
-                            $this->entityFinalFilterPath .= ( strpos( $this->entityFinalFilterPath, "." ) === false ) ? $this->fieldsMap[$field] : "." . $this->fieldsMap[$field];
+                            $this->entityFinalFilterPath .= "." . $this->fieldsMap[$field];
 
                             $this->readClassAnnotations( $this->fieldsType[$field] );
 
@@ -642,6 +642,8 @@ class RestEntityHandler extends RestManager
                 if( array_key_exists( $field, $this->fieldsMap ) ){
 
                     $this->entityFinalFilterPath .= "." . $this->fieldsMap[ $field ];
+
+                    $this->entityFinalFilterPath = substr( $this->entityFinalFilterPath, 1 );
 
                     $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
 

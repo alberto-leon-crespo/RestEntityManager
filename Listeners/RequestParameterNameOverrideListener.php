@@ -27,11 +27,16 @@ class RequestParameterNameOverrideListener
         
         $arrQueryParams = $this->getQueryParams();
 
-        foreach( $arrQueryParams as $queryKey => $queryValue ){
+        if( !empty( $arrQueryParams ) ){
 
-            $this->request->query->set( $queryKey, $queryValue );
+            foreach( $arrQueryParams as $queryKey => $queryValue ) {
+
+                $this->request->query->set($queryKey, $queryValue);
+
+            }
 
         }
+
     }
 
     private function clearQueryParams(){
