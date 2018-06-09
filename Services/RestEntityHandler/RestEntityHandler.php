@@ -40,6 +40,7 @@ class RestEntityHandler extends RestManager
     private $logger;
     private $arrayMatchedParams;
     private $entityFinalFilterPath;
+    private $entityFilterSeparator;
 
     private $headers = array(
         'content-type' => 'application/json'
@@ -102,6 +103,8 @@ class RestEntityHandler extends RestManager
         }
 
         $this->config = $this->bundleConfig['managers'][$strManagerName];
+
+        $this->entityFilterSeparator = $this->config['filters']['entity_separator'];
 
         return $this;
     }
@@ -591,11 +594,11 @@ class RestEntityHandler extends RestManager
 
         foreach( $array as $propertyName => $value ){
 
-            $path = explode( ".", $propertyName );
+            $path = explode( $this->entityFilterSeparator, $propertyName );
 
             $field = array_shift( $path );
 
-            if( strpos( $propertyName, "." ) !== false ){
+            if( strpos( $propertyName, $this->entityFilterSeparator ) !== false ){
 
                 if( !empty( $field ) ){
 
@@ -603,12 +606,12 @@ class RestEntityHandler extends RestManager
 
                         if( class_exists( $this->fieldsType[$field] ) ){
 
-                            $this->entityFinalFilterPath .= "." . $this->fieldsMap[$field];
+                            $this->entityFinalFilterPath .= $this->entityFilterSeparator . $this->fieldsMap[$field];
 
                             $this->readClassAnnotations( $this->fieldsType[$field] );
 
                             $array = array(
-                                implode( ".", $path ) => $value
+                                implode( $this->entityFilterSeparator, $path ) => $value
                             );
 
                             $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
@@ -617,7 +620,7 @@ class RestEntityHandler extends RestManager
 
                             if( array_key_exists( $field, $this->fieldsMap ) ){
 
-                                $this->entityFinalFilterPath .= "." . $this->fieldsMap[ $field ];
+                                $this->entityFinalFilterPath .= $this->entityFilterSeparator . $this->fieldsMap[ $field ];
 
                                 $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
 
@@ -626,7 +629,7 @@ class RestEntityHandler extends RestManager
                             $this->readClassAnnotations( $this->fieldsType[$field] );
 
                             $array = array(
-                                implode( ".", $path ) => $value
+                                implode( $this->entityFilterSeparator, $path ) => $value
                             );
 
                             $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
@@ -641,7 +644,7 @@ class RestEntityHandler extends RestManager
 
                 if( array_key_exists( $field, $this->fieldsMap ) ){
 
-                    $this->entityFinalFilterPath .= "." . $this->fieldsMap[ $field ];
+                    $this->entityFinalFilterPath .= $this->entityFilterSeparator . $this->fieldsMap[ $field ];
 
                     $this->entityFinalFilterPath = substr( $this->entityFinalFilterPath, 1 );
 
