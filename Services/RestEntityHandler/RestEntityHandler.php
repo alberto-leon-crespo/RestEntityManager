@@ -99,7 +99,7 @@ class RestEntityHandler
 
     /**
      * @param null $strManagerName
-     * @return $this
+     * @return \ALC\RestEntityManager\Services\RestEntityHandler\RestEntityHandler $this
      */
     public function getManager( $strManagerName = null ){
 
@@ -317,11 +317,11 @@ class RestEntityHandler
 
         if( $this->entityIdValue !== null ){
 
-            $response = $this->put( $this->path . '/' . $this->entityIdValue, $payload, $arrHeaders );
+            $response = $this->restManager->put( $this->path . '/' . $this->entityIdValue, $payload, $arrHeaders );
 
         }else{
 
-            $response = $this->post( $this->path, $payload, $arrHeaders );
+            $response = $this->restManager->post( $this->path, $payload, $arrHeaders );
 
         }
 
@@ -413,11 +413,11 @@ class RestEntityHandler
 
         if( $keyExist ){
 
-            $response = $this->put( $this->path, $payload, $arrHeaders );
+            $response = $this->restManager->put( $this->path, $payload, $arrHeaders );
 
         }else{
 
-            $response = $this->post( $this->path, $payload, $arrHeaders );
+            $response = $this->restManager->post( $this->path, $payload, $arrHeaders );
 
         }
 
@@ -516,7 +516,7 @@ class RestEntityHandler
 
             if( !in_array( $response->getStatusCode(), HttpConstants::$sucessResponses ) ){
 
-                throw new HttpError($response->getStatusCode(), $this->lastRequestException->getMessage(), $this->lastRequestException, $this->lastRequestException->getResponse()->getHeaders(), $this->lastRequestException->getCode() );
+                throw new HttpError($response->getStatusCode(), $this->restManager->getLastRequestException()->getMessage(), $this->restManager->getLastRequestException(), $this->restManager->getLastRequestException()->getResponse()->getHeaders(), $this->restManager->getLastRequestException()->getCode() );
 
             }
 

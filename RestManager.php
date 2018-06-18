@@ -17,12 +17,12 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 class RestManager
 {
-    protected $config;
+    private $config;
 
     /**
      * @var $lastRequestException RequestException
      */
-    protected $lastRequestException;
+    private $lastRequestException;
     private $session;
     private $guzzleHttpClient;
     private $guzzleHttpConnections;
@@ -232,6 +232,12 @@ class RestManager
         }
 
         return null;
+
+    }
+
+    public function getLastRequestException(){
+
+        return $this->lastRequestException;
 
     }
 

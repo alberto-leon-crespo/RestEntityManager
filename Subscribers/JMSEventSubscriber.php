@@ -9,7 +9,7 @@
 namespace ALC\RestEntityManager\Subscribers;
 
 
-use Doctrine\Common\Annotations\AnnotationReader;
+use ALC\RestEntityManager\Services\MetadataClassReader\MetadataClassReader;
 use JMS\Serializer\EventDispatcher\EventSubscriberInterface;
 use JMS\Serializer\EventDispatcher\PreDeserializeEvent;
 use JMS\Serializer\EventDispatcher\PreSerializeEvent;
@@ -25,14 +25,15 @@ class JMSEventSubscriber implements EventSubscriberInterface
     private $attributesBag;
     private $doctrineObjectConstructor;
     private $anidateObject = false;
+    private $classReader;
 
-    public function __construct( RequestStack $requestStack, UnserializeObjectConstructor $doctrineObjectConstructor )
+    public function __construct( RequestStack $requestStack, UnserializeObjectConstructor $doctrineObjectConstructor, MetadataClassReader $classReader )
     {
         $this->attributesBag = $requestStack->getMasterRequest()->attributes;
         $this->fieldsMap = $this->attributesBag->get('alc_entity_rest_client.handler.fieldsMap');
         $this->fieldsValues = $this->attributesBag->get('alc_entity_rest_client.handler.fieldsValues');
         $this->fieldsType = $this->attributesBag->get('alc_entity_rest_client.handler.fieldsType');
-        $this->annotationReader = new AnnotationReader();
+        $this->classReader = $classReader;
         $this->doctrineObjectConstructor = $doctrineObjectConstructor;
     }
 
@@ -135,40 +136,11 @@ class JMSEventSubscriber implements EventSubscriberInterface
 
     private function readClassAnnotations( $classNamespace ){
 
-        $objClassInstanceReflection = new \ReflectionClass( $classNamespace );
+        $this->classReader->readClassAnnotations( $classNamespace );
 
-        if( !empty( $objClassInstanceReflection->getProperties() ) ){
-
-            foreach( $objClassInstanceReflection->getProperties() as $property ){
-
-                $property->setAccessible( true );
-
-                $arrPropertiesAnnotations = $this->annotationReader->getPropertyAnnotations( $property );
-
-                foreach( $arrPropertiesAnnotations as $propertyAnnotation ){
-
-                    if( get_class( $propertyAnnotation ) == "ALC\\RestEntityManager\\Annotations\\Field" ){
-
-                        $this->fieldsMap[ $property->getName() ] = $propertyAnnotation->getTarget();
-                        $this->fieldsType[ $property->getName() ] = $propertyAnnotation->getType();
-
-                        if( is_object( $classNamespace ) ){
-
-                            $this->fieldsValues[ $property->getName() ] = $property->getValue( $classNamespace );
-
-                        }else{
-
-                            $this->fieldsValues[ $property->getName() ] = null;
-
-                        }
-
-                    }
-
-                }
-
-            }
-
-        }
+        $this->fieldsType = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsType');
+        $this->fieldsMap = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsMap');
+        $this->fieldsValues = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsValues');
 
     }
 }

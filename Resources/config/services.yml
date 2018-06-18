@@ -4,7 +4,7 @@ services:
         arguments: ["%alc_rest_entity_manager%", "@session", "%kernel.bundles%", "@jms_serializer", "@request_stack", "@alc_rest_entity_manager.logger", "@alc_rest_entity_manager.metadata_class_reader"]
     alc_rest_entity_manager.jms_event_subscriber:
         class: ALC\RestEntityManager\Subscribers\JMSEventSubscriber
-        arguments: ["@request_stack","@jms_serializer.object_constructor"]
+        arguments: ["@request_stack","@jms_serializer.object_constructor","@alc_rest_entity_manager.metadata_class_reader"]
         tags:
             - { name: 'jms_serializer.event_listener', event: 'serializer.pre_deserialize' }
             - { name: 'jms_serializer.event_listener', event: 'serializer.pre_serialize' }
@@ -13,6 +13,7 @@ services:
         arguments:
             - "@request_stack"
             - "@jms_serializer.object_constructor"
+            - "@alc_rest_entity_manager.metadata_class_reader"
     alc_rest_entity_manager.logger:
         class: ALC\RestEntityManager\Services\Log\Logger
         arguments: ['%alc_rest_entity_manager%','%kernel.logs_dir%']

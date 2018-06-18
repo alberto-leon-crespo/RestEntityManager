@@ -8,6 +8,7 @@
 
 namespace ALC\RestEntityManager\Services\Serializer;
 
+use ALC\RestEntityManager\Services\MetadataClassReader\MetadataClassReader;
 use ALC\RestEntityManagerBundle\Utils\ArrayUtilsClass;
 use FOS\RestBundle\Context\Context;
 use JMS\Serializer\Construction\UnserializeObjectConstructor;
@@ -22,61 +23,16 @@ class Serializer implements \FOS\RestBundle\Serializer\Serializer
 {
     private $serializationContextFactory;
 
-    public function __construct( RequestStack $requestStack, UnserializeObjectConstructor $objectConstructor )
+    public function __construct( RequestStack $requestStack, UnserializeObjectConstructor $objectConstructor, MetadataClassReader $classReader )
     {
         $builder = SerializerBuilder::create();
 
         $builder->setPropertyNamingStrategy( new IdenticalPropertyNamingStrategy() );
-        $builder->configureListeners( function( EventDispatcher $eventDispatcher ) use ( $requestStack, $objectConstructor ){
+        $builder->configureListeners( function( EventDispatcher $eventDispatcher ) use ( $requestStack, $objectConstructor, $classReader ){
 
             $attributesBag = $requestStack->getMasterRequest()->attributes;
 
-            $eventDispatcher->addListener( 'serializer.pre_deserialize', function( PreDeserializeEvent $event ) use ( $attributesBag, $objectConstructor ){
-
-                $fieldsMap = $attributesBag->get('alc_entity_rest_client.handler.fieldsMap');
-                $fieldsValues = $attributesBag->get('alc_entity_rest_client.handler.fieldsValues');
-                $fieldsType = $attributesBag->get('alc_entity_rest_client.handler.fieldsType');
-
-                $readClassMetadata = function( $classNamespace ) use ( &$fieldsMap, &$fieldsValues, &$fieldsType ){
-
-                    $annotationReader = new AnnotationReader();
-
-                    $objClassInstanceReflection = new \ReflectionClass( $classNamespace );
-
-                    if( !empty( $objClassInstanceReflection->getProperties() ) ){
-
-                        foreach( $objClassInstanceReflection->getProperties() as $property ){
-
-                            $property->setAccessible( true );
-
-                            $arrPropertiesAnnotations = $annotationReader->getPropertyAnnotations( $property );
-
-                            foreach( $arrPropertiesAnnotations as $propertyAnnotation ){
-
-                                if( get_class( $propertyAnnotation ) == "ALC\\RestEntityManager\\Annotations\\Field" ){
-
-                                    $fieldsMap[ $property->getName() ] = $propertyAnnotation->getTarget();
-                                    $fieldsType[ $property->getName() ] = $propertyAnnotation->getType();
-
-                                    if( is_object( $classNamespace ) ){
-
-                                        $fieldsValues[ $property->getName() ] = $property->getValue( $classNamespace );
-
-                                    }else{
-
-                                        $fieldsValues[ $property->getName() ] = null;
-
-                                    }
-
-                                }
-
-                            }
-
-                        }
-
-                    }
-
-                };
+            $eventDispatcher->addListener( 'serializer.pre_deserialize', function( PreDeserializeEvent $event ) use ( $attributesBag, $objectConstructor, $classReader ){
 
                 $type = $event->getType();
                 $context = $event->getContext();
@@ -88,7 +44,12 @@ class Serializer implements \FOS\RestBundle\Serializer\Serializer
 
                 if( empty( $fieldsMap ) ){
 
-                    $readClassMetadata( $type['name'] );
+                    $classReader->readClassAnnotations( $type['name'] );
+
+                    $fieldsMap = $attributesBag->get('alc_entity_rest_client.handler.fieldsMap');
+                    $fieldsValues = $attributesBag->get('alc_entity_rest_client.handler.fieldsValues');
+                    $fieldsType = $attributesBag->get('alc_entity_rest_client.handler.fieldsType');
+
                     $anidateObject = true;
 
                 }
