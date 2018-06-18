@@ -19,8 +19,8 @@ class RequestParameterNameOverrideListener
     private $request;
     private $queryParams;
 
-    public function onKernelController(FilterControllerEvent $event)
-    {
+    public function onKernelController( FilterControllerEvent $event ){
+
         $this->request = $event->getRequest();
 
         $this->clearQueryParams();
@@ -57,17 +57,17 @@ class RequestParameterNameOverrideListener
 
         if( !empty( $_SERVER['REQUEST_URI'] ) ) {
 
-            if (strpos($fullUrl, ".") !== false) {
+            if( strpos( $fullUrl, "." ) !== false ){
 
-                $parsedUrl = parse_url($fullUrl);
+                $parsedUrl = parse_url( $fullUrl );
 
-                if (array_key_exists('query', $parsedUrl)) {
+                if( array_key_exists('query', $parsedUrl ) ){
 
                     $queryParams = $parsedUrl['query'];
 
-                    if (strpos($queryParams, "&") !== false) {
+                    if( strpos( $queryParams, "&" ) !== false ){
 
-                        $queryParamsArray = explode("&", $queryParams);
+                        $queryParamsArray = explode("&", $queryParams );
 
                         foreach( $queryParamsArray as $queryParam ){
 
@@ -77,7 +77,7 @@ class RequestParameterNameOverrideListener
 
                         }
 
-                    } else {
+                    }else{
 
                         $queryParamData = explode( "=", $queryParams );
 

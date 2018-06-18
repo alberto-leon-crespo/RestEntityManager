@@ -9,6 +9,7 @@
 namespace ALC\RestEntityManager\Services\RestEntityHandler;
 
 use ALC\RestEntityManager\RestManager;
+use ALC\RestEntityManager\Services\MetadataClassReader\MetadataClassReader;
 use ALC\RestEntityManager\Services\Log\Logger;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\HttpError;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\InvalidParamsException;
@@ -28,8 +29,8 @@ class RestEntityHandler
     private $session;
     private $bundles;
     private $serializer;
-    private $attibutesBag;
-    private $annotationReader;
+    private $attributesBag;
+    private $classReader;
     private $path;
     private $fieldsMap;
     private $fieldsType;
@@ -73,16 +74,22 @@ class RestEntityHandler
      * @param Serializer $serializer
      * @param RequestStack $requestStack
      */
-    public function __construct( array $config, SessionInterface $session, array $bundles, Serializer $serializer, RequestStack $requestStack, Logger $logger ){
-
-        $this->restManager = new RestManager( $config['managers'][ $config['default_manager'] ], $session, $logger );
+    public function __construct(
+        array $config,
+        SessionInterface $session,
+        array $bundles,
+        Serializer $serializer,
+        RequestStack $requestStack,
+        Logger $logger,
+        MetadataClassReader $classReader
+    ){
 
         $this->bundleConfig = $config;
         $this->session = $session;
         $this->bundles = $bundles;
         $this->serializer = $serializer;
-        $this->attibutesBag = $requestStack->getMasterRequest()->attributes;
-        $this->annotationReader = new AnnotationReader();
+        $this->attributesBag = $requestStack->getMasterRequest()->attributes;
+        $this->classReader = $classReader;
         $this->logger = $logger;
         $this->fieldsToShow = [];
 
@@ -100,6 +107,7 @@ class RestEntityHandler
 
             $strManagerName = $this->bundleConfig['default_manager'];
 
+            $config = $this->bundleConfig['managers'][$strManagerName];
         }
 
         if( !array_key_exists( $strManagerName, $this->bundleConfig['managers'] ) ){
@@ -108,7 +116,9 @@ class RestEntityHandler
 
         }
 
-        $this->config = $this->bundleConfig['managers'][$strManagerName];
+        $config = $this->bundleConfig['managers'][$strManagerName];
+
+        $this->restManager = new RestManager( $config, $this->session, $this->logger );
 
         return $this;
     }
@@ -225,6 +235,10 @@ class RestEntityHandler
 
         $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFilters );
 
+        $className = $this->parseClassNamespace( $objClass );
+
+        $this->readClassAnnotations( $className );
+
         $response = $this->restManager->get( $this->path, $this->arrayMatchedParams, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
@@ -244,6 +258,10 @@ class RestEntityHandler
         $this->matchEntityFieldsWithResourceFields( $arrFilters );
 
         $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFilters );
+
+        $className = $this->parseClassNamespace( $objClass );
+
+        $this->readClassAnnotations( $className );
 
         $response = $this->restManager->get( $this->path, $this->arrayMatchedParams, $this->headers );
 
@@ -448,84 +466,16 @@ class RestEntityHandler
      */
     private function readClassAnnotations( $classNamespace ){
 
-        $objClassInstanceReflection = new \ReflectionClass( $classNamespace );
+        $this->classReader->readClassAnnotations( $classNamespace );
 
-        $this->fieldsType = [];
-        $this->fieldsMap = [];
-        $this->fieldsValues = [];
-
-        if( !empty( $this->annotationReader->getClassAnnotations( $objClassInstanceReflection ) ) ){
-
-            foreach( $this->annotationReader->getClassAnnotations( $objClassInstanceReflection ) as $annotation ){
-
-                if( get_class( $annotation ) == "ALC\\RestEntityManager\\Annotations\\Resource" ){
-
-                    $this->path = $annotation->getValue();
-
-                }
-
-                if( get_class( $annotation ) == "ALC\\RestEntityManager\\Annotations\\Headers" ){
-
-                    $this->headers = $annotation->getValues();
-
-                }
-
-                if( get_class( $annotation ) == "ALC\\RestEntityManager\\Annotations\\Repository" ){
-
-                    $this->entityRepository = $annotation->getRepositoryClass();
-
-                }
-
-            }
-
-        }
-
-        if( !empty( $objClassInstanceReflection->getProperties() ) ){
-
-            foreach( $objClassInstanceReflection->getProperties() as $property ){
-
-                $property->setAccessible( true );
-
-                $arrPropertiesAnnotations = $this->annotationReader->getPropertyAnnotations( $property );
-
-                foreach( $arrPropertiesAnnotations as $propertyAnnotation ){
-
-                    if( get_class( $propertyAnnotation ) == "ALC\\RestEntityManager\\Annotations\\Field" ){
-
-                        $this->fieldsMap[ $property->getName() ] = $propertyAnnotation->getTarget();
-                        $this->fieldsType[ $property->getName() ] = $propertyAnnotation->getType();
-
-                        if( is_object( $classNamespace ) ){
-
-                            $this->fieldsValues[ $property->getName() ] = $property->getValue( $classNamespace );
-
-                        }else{
-
-                            $this->fieldsValues[ $property->getName() ] = null;
-
-                        }
-                    }
-
-                    if( get_class( $propertyAnnotation ) == "ALC\\RestEntityManager\\Annotations\\Id" ){
-
-                        if( is_object( $classNamespace ) ){
-
-                            $this->entityIdValue = $property->getValue( $classNamespace );
-
-                        }
-
-                        $this->entityIdFieldName = $property->getName();
-
-                    }
-
-                }
-
-            }
-
-            $this->attibutesBag->set( 'alc_entity_rest_client.handler.fieldsMap', $this->fieldsMap );
-            $this->attibutesBag->set( 'alc_entity_rest_client.handler.fieldsType', $this->fieldsType );
-            $this->attibutesBag->set( 'alc_entity_rest_client.handler.fieldsValues', $this->fieldsValues );
-        }
+        $this->fieldsType = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsType');
+        $this->fieldsMap = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsMap');
+        $this->fieldsValues = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsValues');
+        $this->path = $this->attributesBag->get( 'alc_entity_rest_client.handler.path' );
+        $this->headers = $this->attributesBag->get( 'alc_entity_rest_client.handler.headers' );
+        $this->entityRepository = $this->attributesBag->get( 'alc_entity_rest_client.handler.entityRespository' );
+        $this->entityIdValue = $this->attributesBag->get( 'alc_entity_rest_client.handler.entityIdValue' );
+        $this->entityIdFieldName = $this->attributesBag->get( 'alc_entity_rest_client.handler.entityIdFieldName' );
 
     }
 
@@ -570,9 +520,7 @@ class RestEntityHandler
 
             }
 
-            $className = str_replace( "array", "", $objClass );
-            $className = str_replace( "<", "", $className );
-            $className = str_replace( ">", "", $className );
+            $className = $this->parseClassNamespace( $objClass );
 
             $this->readClassAnnotations( $className );
             
@@ -603,7 +551,7 @@ class RestEntityHandler
             if( strpos( $propertyName, "." ) !== false ){
 
                 if( !empty( $field ) ){
-
+                    
                     if( array_key_exists( $field, $this->fieldsMap ) ){
 
                         if( class_exists( $this->fieldsType[$field] ) ){
@@ -674,5 +622,14 @@ class RestEntityHandler
         }
 
         return $this->arrayMatchedParams;
+    }
+
+    private function parseClassNamespace($strClassNamespace){
+
+        $strClassNamespace = str_replace( "array", "", $strClassNamespace );
+        $strClassNamespace = str_replace( "<", "", $strClassNamespace );
+        $strClassNamespace = str_replace( ">", "", $strClassNamespace );
+
+        return $strClassNamespace;
     }
 }

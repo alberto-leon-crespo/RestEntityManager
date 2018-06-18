@@ -1,7 +1,7 @@
 services:
     alc_rest_entity_manager.handler:
         class: ALC\RestEntityManager\Services\RestEntityHandler\RestEntityHandler
-        arguments: ["%alc_rest_entity_manager%", "@session", "%kernel.bundles%", "@jms_serializer", "@request_stack", "@alc_rest_entity_manager.logger"]
+        arguments: ["%alc_rest_entity_manager%", "@session", "%kernel.bundles%", "@jms_serializer", "@request_stack", "@alc_rest_entity_manager.logger", "@alc_rest_entity_manager.metadata_class_reader"]
     alc_rest_entity_manager.jms_event_subscriber:
         class: ALC\RestEntityManager\Subscribers\JMSEventSubscriber
         arguments: ["@request_stack","@jms_serializer.object_constructor"]
@@ -16,6 +16,9 @@ services:
     alc_rest_entity_manager.logger:
         class: ALC\RestEntityManager\Services\Log\Logger
         arguments: ['%alc_rest_entity_manager%','%kernel.logs_dir%']
+    alc_rest_entity_manager.metadata_class_reader:
+        class: ALC\RestEntityManager\Services\MetadataClassReader\MetadataClassReader
+        arguments: ['@request_stack']
     alc_rest_request_parameters_name_override:
         class: ALC\RestEntityManager\Listeners\RequestParameterNameOverrideListener
         arguments: []
