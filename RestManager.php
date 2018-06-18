@@ -15,7 +15,7 @@ use GuzzleHttp\Exception\RequestException;
 use Monolog\Formatter\JsonFormatter;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
-abstract class RestManager
+class RestManager
 {
     protected $config;
 
@@ -39,7 +39,7 @@ abstract class RestManager
      */
     private $responseLog;
 
-    protected function __construct( array $config, SessionInterface $session, Logger $logger ){
+    public function __construct( array $config, SessionInterface $session, Logger $logger ){
 
         $this->config = $config;
         $this->session = $session;
@@ -63,7 +63,7 @@ abstract class RestManager
      * @param array $arrHeaders
      * @return \GuzzleHttp\Message\Request|\GuzzleHttp\Message\RequestInterface|\GuzzleHttp\Message\ResponseInterface|null
      */
-    protected function doRequest( $strPath, $strMethod, $arrParams = array(), array $arrHeaders = array() ){
+    public function doRequest( $strPath, $strMethod, $arrParams = array(), array $arrHeaders = array() ){
 
         $arrGuzzleHttpOptions = array();
 
@@ -124,7 +124,7 @@ abstract class RestManager
      * @param array $arrHeaders
      * @return \GuzzleHttp\Message\Request|\GuzzleHttp\Message\RequestInterface|\GuzzleHttp\Message\ResponseInterface|null
      */
-    protected function get( $path, $arrParameters = array(), array $arrHeaders = array() )
+    public function get( $path, $arrParameters = array(), array $arrHeaders = array() )
     {
         return $this->doRequest( $path, 'GET', $arrParameters, $arrHeaders );
 
@@ -136,7 +136,7 @@ abstract class RestManager
      * @param array $arrHeaders
      * @return \GuzzleHttp\Message\Request|\GuzzleHttp\Message\RequestInterface|\GuzzleHttp\Message\ResponseInterface|null
      */
-    protected function post( $path, $arrParameters = array(), $arrHeaders = array() )
+    public function post( $path, $arrParameters = array(), $arrHeaders = array() )
     {
         return $this->doRequest( $path, 'POST', $arrParameters, $arrHeaders );
 
@@ -148,7 +148,7 @@ abstract class RestManager
      * @param array $arrHeaders
      * @return \GuzzleHttp\Message\Request|\GuzzleHttp\Message\RequestInterface|\GuzzleHttp\Message\ResponseInterface|null
      */
-    protected function put( $path, $arrParameters = array(), $arrHeaders = array() )
+    public function put( $path, $arrParameters = array(), $arrHeaders = array() )
     {
 
         return $this->doRequest( $path, 'PUT', $arrParameters, $arrHeaders );
@@ -161,7 +161,7 @@ abstract class RestManager
      * @param array $arrHeaders
      * @return \GuzzleHttp\Message\Request|\GuzzleHttp\Message\RequestInterface|\GuzzleHttp\Message\ResponseInterface|null
      */
-    protected function path( $path, $arrParameters = array(), $arrHeaders = array() )
+    public function path( $path, $arrParameters = array(), $arrHeaders = array() )
     {
 
         return $this->doRequest( $path, 'PATH', $arrParameters, $arrHeaders );
@@ -173,7 +173,7 @@ abstract class RestManager
      * @param array $arrHeaders
      * @return \GuzzleHttp\Message\Request|\GuzzleHttp\Message\RequestInterface|\GuzzleHttp\Message\ResponseInterface|null
      */
-    protected function head( $path, $arrHeaders = array() )
+    public function head( $path, $arrHeaders = array() )
     {
 
         return $this->doRequest( $path, 'HEAD', array(), $arrHeaders );
@@ -186,7 +186,7 @@ abstract class RestManager
      * @param array $arrHeaders
      * @return \GuzzleHttp\Message\Request|\GuzzleHttp\Message\RequestInterface|\GuzzleHttp\Message\ResponseInterface|null
      */
-    protected function trace( $path, $arrParameters = array(), $arrHeaders = array() )
+    public function trace( $path, $arrParameters = array(), $arrHeaders = array() )
     {
 
         return $this->doRequest( $path, 'TRACE', $arrParameters, $arrHeaders );
@@ -198,7 +198,7 @@ abstract class RestManager
      * @param array $arrHeaders
      * @return \GuzzleHttp\Message\Request|\GuzzleHttp\Message\RequestInterface|\GuzzleHttp\Message\ResponseInterface|null
      */
-    protected function options( $path, $arrHeaders = array() )
+    public function options( $path, $arrHeaders = array() )
     {
 
         return $this->doRequest( $path, 'OPTIONS', array(), $arrHeaders );
@@ -210,20 +210,20 @@ abstract class RestManager
      * @param array $arrHeaders
      * @return \GuzzleHttp\Message\Request|\GuzzleHttp\Message\RequestInterface|\GuzzleHttp\Message\ResponseInterface|null
      */
-    protected function detete( $path, $arrHeaders = array() )
+    public function delete( $path, $arrHeaders = array() )
     {
 
         return $this->doRequest( $path, 'DELETE', array(), $arrHeaders );
 
     }
 
-    protected function getConfigParams(){
+    public function getConfigParams(){
 
         return $this->config;
 
     }
 
-    protected function getConfigParam( $strParamName ){
+    public function getConfigParam( $strParamName ){
 
         if( array_key_exists( $strParamName, $this->config ) ){
 
