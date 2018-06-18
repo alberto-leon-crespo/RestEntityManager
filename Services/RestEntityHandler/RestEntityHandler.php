@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Doctrine\Common\Annotations\AnnotationReader;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\RunTimeException;
 
-class RestEntityHandler extends RestManager
+class RestEntityHandler
 {
     private $bundleConfig;
     private $session;
@@ -34,13 +34,18 @@ class RestEntityHandler extends RestManager
     private $fieldsMap;
     private $fieldsType;
     private $fieldsValues;
+    private $fieldsToShow;
     private $entityIdValue;
     private $entityIdFieldName;
     private $entityRepository;
     private $logger;
     private $arrayMatchedParams;
     private $entityFinalFilterPath;
-    private $entityFilterSeparator;
+
+    /**
+     * @var $restManager RestManager
+     */
+    private $restManager;
 
     private $headers = array(
         'content-type' => 'application/json'
@@ -70,7 +75,7 @@ class RestEntityHandler extends RestManager
      */
     public function __construct( array $config, SessionInterface $session, array $bundles, Serializer $serializer, RequestStack $requestStack, Logger $logger ){
 
-        parent::__construct( $config['managers'][ $config['default_manager'] ], $session, $logger );
+        $this->restManager = new RestManager( $config['managers'][ $config['default_manager'] ], $session, $logger );
 
         $this->bundleConfig = $config;
         $this->session = $session;
@@ -79,6 +84,7 @@ class RestEntityHandler extends RestManager
         $this->attibutesBag = $requestStack->getMasterRequest()->attributes;
         $this->annotationReader = new AnnotationReader();
         $this->logger = $logger;
+        $this->fieldsToShow = [];
 
         return $this;
 
@@ -103,8 +109,6 @@ class RestEntityHandler extends RestManager
         }
 
         $this->config = $this->bundleConfig['managers'][$strManagerName];
-
-        $this->entityFilterSeparator = $this->config['filters']['entity_separator'];
 
         return $this;
     }
@@ -142,7 +146,7 @@ class RestEntityHandler extends RestManager
 
         $this->readClassAnnotations( $classNamespace );
 
-        $respositoryInstance = new $this->entityRepository( $this->config, $this->session, $this->serializer, $this->logger );
+        $respositoryInstance = new $this->entityRepository( $this->restManager, $this->serializer );
 
         $reflectionClass = new \ReflectionClass( $respositoryInstance );
 
@@ -152,7 +156,7 @@ class RestEntityHandler extends RestManager
 
             if( $method->isPublic() ){
 
-                $this->{$method->getName()} = function( $value = array() ) use ( $respositoryInstance, $method ){
+                $this->{$method->getName()} = function() use ( $respositoryInstance, $method ){
 
                     $closure = $method->getClosure( $respositoryInstance );
 
@@ -201,7 +205,7 @@ class RestEntityHandler extends RestManager
      */
     public function find( $id, $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $response = $this->get( $this->path . "/" . $id, array(), $this->headers );
+        $response = $this->restManager->get( $this->path . "/" . $id, array(), $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -221,7 +225,7 @@ class RestEntityHandler extends RestManager
 
         $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFilters );
 
-        $response = $this->get( $this->path, $this->arrayMatchedParams, $this->headers );
+        $response = $this->restManager->get( $this->path, $this->arrayMatchedParams, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -241,7 +245,7 @@ class RestEntityHandler extends RestManager
 
         $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFilters );
 
-        $response = $this->get( $this->path, $this->arrayMatchedParams, $this->headers );
+        $response = $this->restManager->get( $this->path, $this->arrayMatchedParams, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray )[0];
     }
@@ -254,7 +258,7 @@ class RestEntityHandler extends RestManager
      */
     public function findAll( $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $response = $this->get( $this->path, array(), $this->headers );
+        $response = $this->restManager->get( $this->path, array(), $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -335,7 +339,7 @@ class RestEntityHandler extends RestManager
 
         }
 
-        $response = $this->detete( $this->path . '/' . $this->entityIdValue, $arrHeaders );
+        $response = $this->delete( $this->path . '/' . $this->entityIdValue, $arrHeaders );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -409,7 +413,7 @@ class RestEntityHandler extends RestManager
      * @param bool $objectsToArray
      * @return array|\JMS\Serializer\scalar|mixed|object
      */
-    public function refresh( &$object, $format = 'json', $objClass = null, $objectsToArray = false )
+    public function refresh( &$object, $format = 'json', $objClass = null )
     {
         $this->readClassAnnotations( $object );
 
@@ -531,7 +535,18 @@ class RestEntityHandler extends RestManager
      * @param null $objClass
      * @return array|\JMS\Serializer\scalar|mixed|object
      */
-    private function deserializeResponse( Response $response, $format = 'json', $objClass = null, $objectsToArray = true ){
+    private function deserializeResponse( Response $response, $format = 'json', $objClass = null, $objectsToArray = false ){
+
+        foreach( $this->deserilizationFormats as $header => $availableFormat ){
+
+            if( strpos( $response->getHeader('content-type'), $header ) !== false ){
+
+                $detectedFormat = true;
+                $deserializeFormat = $this->deserilizationFormats[$header];
+
+            }
+
+        }
 
         if( $format == 'json' ){
 
@@ -542,19 +557,6 @@ class RestEntityHandler extends RestManager
             return $response->xml();
 
         }else if( $format = 'object' && $objClass !== null ){
-
-            $detectedFormat = false;
-
-            foreach( $this->deserilizationFormats as $header => $format ){
-
-                if( strpos( $response->getHeader('content-type'), $header ) !== false ){
-
-                    $detectedFormat = true;
-                    $deserializeFormat = $this->deserilizationFormats[$header];
-
-                }
-
-            }
 
             if( $detectedFormat === false ){
 
@@ -573,7 +575,7 @@ class RestEntityHandler extends RestManager
             $className = str_replace( ">", "", $className );
 
             $this->readClassAnnotations( $className );
-
+            
             $response = $this->serializer->deserialize( (string)$response->getBody(), $objClass, $deserializeFormat );
 
             if( $objectsToArray ){
@@ -594,11 +596,11 @@ class RestEntityHandler extends RestManager
 
         foreach( $array as $propertyName => $value ){
 
-            $path = explode( $this->entityFilterSeparator, $propertyName );
+            $path = explode( ".", $propertyName );
 
             $field = array_shift( $path );
 
-            if( strpos( $propertyName, $this->entityFilterSeparator ) !== false ){
+            if( strpos( $propertyName, "." ) !== false ){
 
                 if( !empty( $field ) ){
 
@@ -606,12 +608,12 @@ class RestEntityHandler extends RestManager
 
                         if( class_exists( $this->fieldsType[$field] ) ){
 
-                            $this->entityFinalFilterPath .= $this->entityFilterSeparator . $this->fieldsMap[$field];
+                            $this->entityFinalFilterPath .= "." . $this->fieldsMap[$field];
 
                             $this->readClassAnnotations( $this->fieldsType[$field] );
 
                             $array = array(
-                                implode( $this->entityFilterSeparator, $path ) => $value
+                                implode( ".", $path ) => $value
                             );
 
                             $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
@@ -620,7 +622,7 @@ class RestEntityHandler extends RestManager
 
                             if( array_key_exists( $field, $this->fieldsMap ) ){
 
-                                $this->entityFinalFilterPath .= $this->entityFilterSeparator . $this->fieldsMap[ $field ];
+                                $this->entityFinalFilterPath .= "." . $this->fieldsMap[ $field ];
 
                                 $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
 
@@ -629,7 +631,7 @@ class RestEntityHandler extends RestManager
                             $this->readClassAnnotations( $this->fieldsType[$field] );
 
                             $array = array(
-                                implode( $this->entityFilterSeparator, $path ) => $value
+                                implode( ".", $path ) => $value
                             );
 
                             $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
@@ -644,7 +646,7 @@ class RestEntityHandler extends RestManager
 
                 if( array_key_exists( $field, $this->fieldsMap ) ){
 
-                    $this->entityFinalFilterPath .= $this->entityFilterSeparator . $this->fieldsMap[ $field ];
+                    $this->entityFinalFilterPath .= "." . $this->fieldsMap[ $field ];
 
                     $this->entityFinalFilterPath = substr( $this->entityFinalFilterPath, 1 );
 
@@ -672,15 +674,5 @@ class RestEntityHandler extends RestManager
         }
 
         return $this->arrayMatchedParams;
-    }
-
-    private function setValue(array &$arr, $path,$val)
-    {
-        $loc = &$arr;
-        foreach(explode('.', $path) as $step)
-        {
-            $loc = &$loc[$step];
-        }
-        return $loc = $val;
     }
 }

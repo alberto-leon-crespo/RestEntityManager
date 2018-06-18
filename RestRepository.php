@@ -12,15 +12,15 @@ use ALC\RestEntityManager\Services\Log\Logger;
 use JMS\Serializer\Serializer;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
-class RestRepository extends RestManager
+class RestRepository
 {
     protected $serializer;
+    protected $restManager;
 
-    public function __construct( array $config, SessionInterface $session, Serializer $serializer, Logger $logger ){
-
-        parent::__construct( $config, $session, $logger );
+    public function __construct( RestManager $restManager, Serializer $serializer ){
 
         $this->serializer = $serializer;
+        $this->restManager = $restManager;
 
     }
 }
