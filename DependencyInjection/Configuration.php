@@ -31,12 +31,55 @@ class Configuration implements ConfigurationInterface
                         ->scalarNode('name')->end()
                         ->scalarNode('host')->end()
                         ->scalarNode('session_timeout')->defaultValue(3600)->end()
-                        ->arrayNode('filters')
+                        ->variableNode('custom_params')->defaultValue([])->end()
+                        ->arrayNode('avanced')
+                            ->beforeNormalization()
+                                ->ifEmpty()
+                                ->then(function ($v){
+                                    return [
+                                        'filtering' => [
+                                            'ignored_parameters' => [],
+                                            'parameters_map' => [
+                                                'maps' => []
+                                            ]
+                                        ]
+                                    ];
+                                })
+                            ->end()
                             ->children()
-                                ->scalarNode('entity_separator')->defaultValue('.')->end()
+                                ->arrayNode('filtering')
+                                    ->children()
+                                        ->variableNode('ignored_parameters')->defaultValue([])->end()
+                                        ->arrayNode('parameters_map')
+                                            ->beforeNormalization()
+                                                ->ifNull()
+                                                ->then(function ($v){
+                                                    return [
+                                                        "maps" => []
+                                                    ];
+                                                })
+                                            ->end()
+                                            ->children()
+                                                ->arrayNode('maps')
+                                                    ->prototype('array')
+                                                    ->beforeNormalization()
+                                                        ->ifNull()
+                                                        ->then(function (){
+                                                            return [];
+                                                        })
+                                                    ->end()
+                                                    ->children()
+                                                        ->scalarNode('origin')->defaultNull()->end()
+                                                        ->scalarNode('destination')->defaultNull()->end()
+                                                        ->scalarNode('interceptor')->defaultNull()->end()
+                                                    ->end()
+                                                ->end()
+                                            ->end()
+                                        ->end()
+                                    ->end()
+                                ->end()
                             ->end()
                         ->end()
-                        ->variableNode('custom_params')->end()
                     ->end()
                 ->end()
             ->end();
