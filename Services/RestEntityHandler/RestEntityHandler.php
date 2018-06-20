@@ -11,6 +11,7 @@ namespace ALC\RestEntityManager\Services\RestEntityHandler;
 use ALC\RestEntityManager\RestManager;
 use ALC\RestEntityManager\Services\MetadataClassReader\MetadataClassReader;
 use ALC\RestEntityManager\Services\Log\Logger;
+use ALC\RestEntityManager\Services\ParametersProcessor\ParametersProcessor;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\HttpError;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\InvalidParamsException;
 use ALC\RestEntityManager\Utils\ArrayUtilsClass;
@@ -35,13 +36,13 @@ class RestEntityHandler
     private $fieldsMap;
     private $fieldsType;
     private $fieldsValues;
-    private $fieldsToShow;
     private $entityIdValue;
     private $entityIdFieldName;
     private $entityRepository;
     private $logger;
     private $arrayMatchedParams;
     private $entityFinalFilterPath;
+    private $parametersProcesor;
 
     /**
      * @var $restManager RestManager
@@ -81,7 +82,8 @@ class RestEntityHandler
         Serializer $serializer,
         RequestStack $requestStack,
         Logger $logger,
-        MetadataClassReader $classReader
+        MetadataClassReader $classReader,
+        ParametersProcessor $parametersProcessor
     ){
 
         $this->bundleConfig = $config;
@@ -92,6 +94,7 @@ class RestEntityHandler
         $this->classReader = $classReader;
         $this->logger = $logger;
         $this->fieldsToShow = [];
+        $this->parametersProcesor = $parametersProcessor;
 
         return $this;
 
@@ -238,8 +241,12 @@ class RestEntityHandler
         $className = $this->parseClassNamespace( $objClass );
 
         $this->readClassAnnotations( $className );
+        
+        $filteringConfig = $this->restManager->getConfigParams()['avanced']['filtering'];
 
-        $response = $this->restManager->get( $this->path, $this->arrayMatchedParams, $this->headers );
+        $arrParamsToAdd = $this->parametersProcesor->processParameters( $filteringConfig, $this->arrayMatchedParams );
+
+        $response = $this->restManager->get( $this->path, $arrParamsToAdd, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -263,6 +270,10 @@ class RestEntityHandler
 
         $this->readClassAnnotations( $className );
 
+        $filteringConfig = $this->restManager->getConfigParams()['avanced']['filtering'];
+
+        $arrParamsToAdd = $this->parametersProcesor->processParameters( $filteringConfig, $this->arrayMatchedParams );
+
         $response = $this->restManager->get( $this->path, $this->arrayMatchedParams, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray )[0];
@@ -276,6 +287,8 @@ class RestEntityHandler
      */
     public function findAll( $format = 'json', $objClass = null, $objectsToArray = false )
     {
+        $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFieldsToShow );
+
         $response = $this->restManager->get( $this->path, array(), $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
@@ -431,7 +444,7 @@ class RestEntityHandler
      * @param bool $objectsToArray
      * @return array|\JMS\Serializer\scalar|mixed|object
      */
-    public function refresh( &$object, $format = 'json', $objClass = null )
+    public function refresh( &$object, $format = 'json', $objClass = null, $objectsToArray = false )
     {
         $this->readClassAnnotations( $object );
 
@@ -616,6 +629,7 @@ class RestEntityHandler
             if( array_key_exists( $propertyName, $this->fieldsMap ) ){
 
                 $this->arrayMatchedParams[ $this->fieldsMap[ $propertyName ] ] = $value;
+
 
             }
 
