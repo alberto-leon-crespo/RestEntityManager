@@ -9,7 +9,9 @@
 namespace ALC\RestEntityManager\Services\RestEntityHandler;
 
 use ALC\RestEntityManager\RestManager;
+use ALC\RestEntityManager\Services\MetadataClassReader\MetadataClassReader;
 use ALC\RestEntityManager\Services\Log\Logger;
+use ALC\RestEntityManager\Services\ParametersProcessor\ParametersProcessor;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\HttpError;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\InvalidParamsException;
 use ALC\RestEntityManager\Utils\ArrayUtilsClass;
@@ -22,14 +24,14 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Doctrine\Common\Annotations\AnnotationReader;
 use ALC\RestEntityManager\Services\RestEntityHandler\Exception\RunTimeException;
 
-class RestEntityHandler extends RestManager
+class RestEntityHandler
 {
     private $bundleConfig;
     private $session;
     private $bundles;
     private $serializer;
-    private $attibutesBag;
-    private $annotationReader;
+    private $attributesBag;
+    private $classReader;
     private $path;
     private $fieldsMap;
     private $fieldsType;
@@ -38,9 +40,12 @@ class RestEntityHandler extends RestManager
     private $entityIdFieldName;
     private $entityRepository;
     private $logger;
-    private $arrayMatchedParams;
-    private $entityFinalFilterPath;
-    private $entityFilterSeparator;
+    private $parametersProcesor;
+
+    /**
+     * @var $restManager RestManager
+     */
+    private $restManager;
 
     private $headers = array(
         'content-type' => 'application/json'
@@ -68,17 +73,26 @@ class RestEntityHandler extends RestManager
      * @param Serializer $serializer
      * @param RequestStack $requestStack
      */
-    public function __construct( array $config, SessionInterface $session, array $bundles, Serializer $serializer, RequestStack $requestStack, Logger $logger ){
-
-        parent::__construct( $config['managers'][ $config['default_manager'] ], $session, $logger );
+    public function __construct(
+        array $config,
+        SessionInterface $session,
+        array $bundles,
+        Serializer $serializer,
+        RequestStack $requestStack,
+        Logger $logger,
+        MetadataClassReader $classReader,
+        ParametersProcessor $parametersProcessor
+    ){
 
         $this->bundleConfig = $config;
         $this->session = $session;
         $this->bundles = $bundles;
         $this->serializer = $serializer;
-        $this->attibutesBag = $requestStack->getMasterRequest()->attributes;
-        $this->annotationReader = new AnnotationReader();
+        $this->attributesBag = $requestStack->getMasterRequest()->attributes;
+        $this->classReader = $classReader;
         $this->logger = $logger;
+        $this->fieldsToShow = [];
+        $this->parametersProcesor = $parametersProcessor;
 
         return $this;
 
@@ -86,7 +100,7 @@ class RestEntityHandler extends RestManager
 
     /**
      * @param null $strManagerName
-     * @return $this
+     * @return \ALC\RestEntityManager\Services\RestEntityHandler\RestEntityHandler $this
      */
     public function getManager( $strManagerName = null ){
 
@@ -94,6 +108,7 @@ class RestEntityHandler extends RestManager
 
             $strManagerName = $this->bundleConfig['default_manager'];
 
+            $config = $this->bundleConfig['managers'][$strManagerName];
         }
 
         if( !array_key_exists( $strManagerName, $this->bundleConfig['managers'] ) ){
@@ -102,9 +117,9 @@ class RestEntityHandler extends RestManager
 
         }
 
-        $this->config = $this->bundleConfig['managers'][$strManagerName];
+        $config = $this->bundleConfig['managers'][$strManagerName];
 
-        $this->entityFilterSeparator = $this->config['filters']['entity_separator'];
+        $this->restManager = new RestManager( $config, $this->session, $this->logger );
 
         return $this;
     }
@@ -142,7 +157,7 @@ class RestEntityHandler extends RestManager
 
         $this->readClassAnnotations( $classNamespace );
 
-        $respositoryInstance = new $this->entityRepository( $this->config, $this->session, $this->serializer, $this->logger );
+        $respositoryInstance = new $this->entityRepository( $this->restManager, $this->serializer );
 
         $reflectionClass = new \ReflectionClass( $respositoryInstance );
 
@@ -152,7 +167,7 @@ class RestEntityHandler extends RestManager
 
             if( $method->isPublic() ){
 
-                $this->{$method->getName()} = function( $value = array() ) use ( $respositoryInstance, $method ){
+                $this->{$method->getName()} = function() use ( $respositoryInstance, $method ){
 
                     $closure = $method->getClosure( $respositoryInstance );
 
@@ -201,7 +216,7 @@ class RestEntityHandler extends RestManager
      */
     public function find( $id, $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $response = $this->get( $this->path . "/" . $id, array(), $this->headers );
+        $response = $this->restManager->get( $this->path . "/" . $id, array(), $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -215,13 +230,13 @@ class RestEntityHandler extends RestManager
      */
     public function findBy( array $arrFilters, $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $this->arrayMatchedParams = [];
+        $className = $this->parseClassNamespace( $objClass );
 
-        $this->matchEntityFieldsWithResourceFields( $arrFilters );
+        $filteringConfig = $this->restManager->getConfigParams()['avanced']['filtering'];
 
-        $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFilters );
+        $arrParamsToAdd = $this->parametersProcesor->processParameters( $filteringConfig, $className, $arrFilters );
 
-        $response = $this->get( $this->path, $this->arrayMatchedParams, $this->headers );
+        $response = $this->restManager->get( $this->path, $arrParamsToAdd, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -235,13 +250,13 @@ class RestEntityHandler extends RestManager
      */
     public function findOneBy( array $arrFilters, $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $this->arrayMatchedParams = [];
+        $className = $this->parseClassNamespace( $objClass );
 
-        $this->matchEntityFieldsWithResourceFields( $arrFilters );
+        $filteringConfig = $this->restManager->getConfigParams()['avanced']['filtering'];
 
-        $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFilters );
+        $arrParamsToAdd = $this->parametersProcesor->processParameters( $filteringConfig, $className, $arrFilters );
 
-        $response = $this->get( $this->path, $this->arrayMatchedParams, $this->headers );
+        $response = $this->restManager->get( $this->path, $arrParamsToAdd, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray )[0];
     }
@@ -254,7 +269,13 @@ class RestEntityHandler extends RestManager
      */
     public function findAll( $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $response = $this->get( $this->path, array(), $this->headers );
+        $className = $this->parseClassNamespace( $objClass );
+
+        $filteringConfig = $this->restManager->getConfigParams()['avanced']['filtering'];
+
+        $arrParamsToAdd = $this->parametersProcesor->processParameters( $filteringConfig, $className, array() );
+
+        $response = $this->restManager->get( $this->path, $arrParamsToAdd, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -295,11 +316,11 @@ class RestEntityHandler extends RestManager
 
         if( $this->entityIdValue !== null ){
 
-            $response = $this->put( $this->path . '/' . $this->entityIdValue, $payload, $arrHeaders );
+            $response = $this->restManager->put( $this->path . '/' . $this->entityIdValue, $payload, $arrHeaders );
 
         }else{
 
-            $response = $this->post( $this->path, $payload, $arrHeaders );
+            $response = $this->restManager->post( $this->path, $payload, $arrHeaders );
 
         }
 
@@ -335,7 +356,7 @@ class RestEntityHandler extends RestManager
 
         }
 
-        $response = $this->detete( $this->path . '/' . $this->entityIdValue, $arrHeaders );
+        $response = $this->delete( $this->path . '/' . $this->entityIdValue, $arrHeaders );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -391,11 +412,11 @@ class RestEntityHandler extends RestManager
 
         if( $keyExist ){
 
-            $response = $this->put( $this->path, $payload, $arrHeaders );
+            $response = $this->restManager->put( $this->path, $payload, $arrHeaders );
 
         }else{
 
-            $response = $this->post( $this->path, $payload, $arrHeaders );
+            $response = $this->restManager->post( $this->path, $payload, $arrHeaders );
 
         }
 
@@ -444,84 +465,16 @@ class RestEntityHandler extends RestManager
      */
     private function readClassAnnotations( $classNamespace ){
 
-        $objClassInstanceReflection = new \ReflectionClass( $classNamespace );
+        $this->classReader->readClassAnnotations( $classNamespace );
 
-        $this->fieldsType = [];
-        $this->fieldsMap = [];
-        $this->fieldsValues = [];
-
-        if( !empty( $this->annotationReader->getClassAnnotations( $objClassInstanceReflection ) ) ){
-
-            foreach( $this->annotationReader->getClassAnnotations( $objClassInstanceReflection ) as $annotation ){
-
-                if( get_class( $annotation ) == "ALC\\RestEntityManager\\Annotations\\Resource" ){
-
-                    $this->path = $annotation->getValue();
-
-                }
-
-                if( get_class( $annotation ) == "ALC\\RestEntityManager\\Annotations\\Headers" ){
-
-                    $this->headers = $annotation->getValues();
-
-                }
-
-                if( get_class( $annotation ) == "ALC\\RestEntityManager\\Annotations\\Repository" ){
-
-                    $this->entityRepository = $annotation->getRepositoryClass();
-
-                }
-
-            }
-
-        }
-
-        if( !empty( $objClassInstanceReflection->getProperties() ) ){
-
-            foreach( $objClassInstanceReflection->getProperties() as $property ){
-
-                $property->setAccessible( true );
-
-                $arrPropertiesAnnotations = $this->annotationReader->getPropertyAnnotations( $property );
-
-                foreach( $arrPropertiesAnnotations as $propertyAnnotation ){
-
-                    if( get_class( $propertyAnnotation ) == "ALC\\RestEntityManager\\Annotations\\Field" ){
-
-                        $this->fieldsMap[ $property->getName() ] = $propertyAnnotation->getTarget();
-                        $this->fieldsType[ $property->getName() ] = $propertyAnnotation->getType();
-
-                        if( is_object( $classNamespace ) ){
-
-                            $this->fieldsValues[ $property->getName() ] = $property->getValue( $classNamespace );
-
-                        }else{
-
-                            $this->fieldsValues[ $property->getName() ] = null;
-
-                        }
-                    }
-
-                    if( get_class( $propertyAnnotation ) == "ALC\\RestEntityManager\\Annotations\\Id" ){
-
-                        if( is_object( $classNamespace ) ){
-
-                            $this->entityIdValue = $property->getValue( $classNamespace );
-
-                        }
-
-                        $this->entityIdFieldName = $property->getName();
-
-                    }
-
-                }
-
-            }
-
-            $this->attibutesBag->set( 'alc_entity_rest_client.handler.fieldsMap', $this->fieldsMap );
-            $this->attibutesBag->set( 'alc_entity_rest_client.handler.fieldsType', $this->fieldsType );
-            $this->attibutesBag->set( 'alc_entity_rest_client.handler.fieldsValues', $this->fieldsValues );
-        }
+        $this->fieldsType = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsType');
+        $this->fieldsMap = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsMap');
+        $this->fieldsValues = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsValues');
+        $this->path = $this->attributesBag->get( 'alc_entity_rest_client.handler.path' );
+        $this->headers = $this->attributesBag->get( 'alc_entity_rest_client.handler.headers' );
+        $this->entityRepository = $this->attributesBag->get( 'alc_entity_rest_client.handler.entityRespository' );
+        $this->entityIdValue = $this->attributesBag->get( 'alc_entity_rest_client.handler.entityIdValue' );
+        $this->entityIdFieldName = $this->attributesBag->get( 'alc_entity_rest_client.handler.entityIdFieldName' );
 
     }
 
@@ -531,7 +484,18 @@ class RestEntityHandler extends RestManager
      * @param null $objClass
      * @return array|\JMS\Serializer\scalar|mixed|object
      */
-    private function deserializeResponse( Response $response, $format = 'json', $objClass = null, $objectsToArray = true ){
+    private function deserializeResponse( Response $response, $format = 'json', $objClass = null, $objectsToArray = false ){
+
+        foreach( $this->deserilizationFormats as $header => $availableFormat ){
+
+            if( strpos( $response->getHeader('content-type'), $header ) !== false ){
+
+                $detectedFormat = true;
+                $deserializeFormat = $this->deserilizationFormats[$header];
+
+            }
+
+        }
 
         if( $format == 'json' ){
 
@@ -543,19 +507,6 @@ class RestEntityHandler extends RestManager
 
         }else if( $format = 'object' && $objClass !== null ){
 
-            $detectedFormat = false;
-
-            foreach( $this->deserilizationFormats as $header => $format ){
-
-                if( strpos( $response->getHeader('content-type'), $header ) !== false ){
-
-                    $detectedFormat = true;
-                    $deserializeFormat = $this->deserilizationFormats[$header];
-
-                }
-
-            }
-
             if( $detectedFormat === false ){
 
                 throw new RunTimeException(400, "Unserialized format <" . $response->getHeader('content-type') . "> is not supported.", null, $response->getHeaders(), 0 );
@@ -564,16 +515,14 @@ class RestEntityHandler extends RestManager
 
             if( !in_array( $response->getStatusCode(), HttpConstants::$sucessResponses ) ){
 
-                throw new HttpError($response->getStatusCode(), $this->lastRequestException->getMessage(), $this->lastRequestException, $this->lastRequestException->getResponse()->getHeaders(), $this->lastRequestException->getCode() );
+                throw new HttpError($response->getStatusCode(), $this->restManager->getLastRequestException()->getMessage(), $this->restManager->getLastRequestException(), $this->restManager->getLastRequestException()->getResponse()->getHeaders(), $this->restManager->getLastRequestException()->getCode() );
 
             }
 
-            $className = str_replace( "array", "", $objClass );
-            $className = str_replace( "<", "", $className );
-            $className = str_replace( ">", "", $className );
+            $className = $this->parseClassNamespace( $objClass );
 
             $this->readClassAnnotations( $className );
-
+            
             $response = $this->serializer->deserialize( (string)$response->getBody(), $objClass, $deserializeFormat );
 
             if( $objectsToArray ){
@@ -590,97 +539,12 @@ class RestEntityHandler extends RestManager
 
     }
 
-    private function matchEntityFieldsWithResourcesFieldsRecursive( $array ){
+    private function parseClassNamespace($strClassNamespace){
 
-        foreach( $array as $propertyName => $value ){
+        $strClassNamespace = str_replace( "array", "", $strClassNamespace );
+        $strClassNamespace = str_replace( "<", "", $strClassNamespace );
+        $strClassNamespace = str_replace( ">", "", $strClassNamespace );
 
-            $path = explode( $this->entityFilterSeparator, $propertyName );
-
-            $field = array_shift( $path );
-
-            if( strpos( $propertyName, $this->entityFilterSeparator ) !== false ){
-
-                if( !empty( $field ) ){
-
-                    if( array_key_exists( $field, $this->fieldsMap ) ){
-
-                        if( class_exists( $this->fieldsType[$field] ) ){
-
-                            $this->entityFinalFilterPath .= $this->entityFilterSeparator . $this->fieldsMap[$field];
-
-                            $this->readClassAnnotations( $this->fieldsType[$field] );
-
-                            $array = array(
-                                implode( $this->entityFilterSeparator, $path ) => $value
-                            );
-
-                            $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
-
-                        }else{
-
-                            if( array_key_exists( $field, $this->fieldsMap ) ){
-
-                                $this->entityFinalFilterPath .= $this->entityFilterSeparator . $this->fieldsMap[ $field ];
-
-                                $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
-
-                            }
-
-                            $this->readClassAnnotations( $this->fieldsType[$field] );
-
-                            $array = array(
-                                implode( $this->entityFilterSeparator, $path ) => $value
-                            );
-
-                            $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
-
-                        }
-
-                    }
-
-                }
-
-            }else{
-
-                if( array_key_exists( $field, $this->fieldsMap ) ){
-
-                    $this->entityFinalFilterPath .= $this->entityFilterSeparator . $this->fieldsMap[ $field ];
-
-                    $this->entityFinalFilterPath = substr( $this->entityFinalFilterPath, 1 );
-
-                    $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
-
-                }
-
-            }
-
-        }
-
-        return $this->arrayMatchedParams;
-    }
-
-    private function matchEntityFieldsWithResourceFields( $array ){
-
-        foreach( $array as $propertyName => $value ){
-
-            if( array_key_exists( $propertyName, $this->fieldsMap ) ){
-
-                $this->arrayMatchedParams[ $this->fieldsMap[ $propertyName ] ] = $value;
-
-            }
-
-        }
-
-        return $this->arrayMatchedParams;
-    }
-
-    private function setValue(array &$arr, $path,$val)
-    {
-        $loc = &$arr;
-        foreach(explode('.', $path) as $step)
-        {
-            $loc = &$loc[$step];
-        }
-        return $loc = $val;
+        return $strClassNamespace;
     }
 }
