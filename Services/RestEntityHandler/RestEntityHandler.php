@@ -40,8 +40,6 @@ class RestEntityHandler
     private $entityIdFieldName;
     private $entityRepository;
     private $logger;
-    private $arrayMatchedParams;
-    private $entityFinalFilterPath;
     private $parametersProcesor;
 
     /**
@@ -232,19 +230,11 @@ class RestEntityHandler
      */
     public function findBy( array $arrFilters, $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $this->arrayMatchedParams = [];
-
-        $this->matchEntityFieldsWithResourceFields( $arrFilters );
-
-        $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFilters );
-
         $className = $this->parseClassNamespace( $objClass );
 
-        $this->readClassAnnotations( $className );
-        
         $filteringConfig = $this->restManager->getConfigParams()['avanced']['filtering'];
 
-        $arrParamsToAdd = $this->parametersProcesor->processParameters( $filteringConfig, $this->arrayMatchedParams );
+        $arrParamsToAdd = $this->parametersProcesor->processParameters( $filteringConfig, $className, $arrFilters );
 
         $response = $this->restManager->get( $this->path, $arrParamsToAdd, $this->headers );
 
@@ -260,21 +250,13 @@ class RestEntityHandler
      */
     public function findOneBy( array $arrFilters, $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $this->arrayMatchedParams = [];
-
-        $this->matchEntityFieldsWithResourceFields( $arrFilters );
-
-        $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFilters );
-
         $className = $this->parseClassNamespace( $objClass );
-
-        $this->readClassAnnotations( $className );
 
         $filteringConfig = $this->restManager->getConfigParams()['avanced']['filtering'];
 
-        $arrParamsToAdd = $this->parametersProcesor->processParameters( $filteringConfig, $this->arrayMatchedParams );
+        $arrParamsToAdd = $this->parametersProcesor->processParameters( $filteringConfig, $className, $arrFilters );
 
-        $response = $this->restManager->get( $this->path, $this->arrayMatchedParams, $this->headers );
+        $response = $this->restManager->get( $this->path, $arrParamsToAdd, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray )[0];
     }
@@ -287,9 +269,13 @@ class RestEntityHandler
      */
     public function findAll( $format = 'json', $objClass = null, $objectsToArray = false )
     {
-        $this->matchEntityFieldsWithResourcesFieldsRecursive( $arrFieldsToShow );
+        $className = $this->parseClassNamespace( $objClass );
 
-        $response = $this->restManager->get( $this->path, array(), $this->headers );
+        $filteringConfig = $this->restManager->getConfigParams()['avanced']['filtering'];
+
+        $arrParamsToAdd = $this->parametersProcesor->processParameters( $filteringConfig, $className, array() );
+
+        $response = $this->restManager->get( $this->path, $arrParamsToAdd, $this->headers );
 
         return $this->deserializeResponse( $response, $format, $objClass, $objectsToArray );
     }
@@ -551,91 +537,6 @@ class RestEntityHandler
 
         }
 
-    }
-
-    private function matchEntityFieldsWithResourcesFieldsRecursive( $array ){
-
-        foreach( $array as $propertyName => $value ){
-
-            $path = explode( ".", $propertyName );
-
-            $field = array_shift( $path );
-
-            if( strpos( $propertyName, "." ) !== false ){
-
-                if( !empty( $field ) ){
-                    
-                    if( array_key_exists( $field, $this->fieldsMap ) ){
-
-                        if( class_exists( $this->fieldsType[$field] ) ){
-
-                            $this->entityFinalFilterPath .= "." . $this->fieldsMap[$field];
-
-                            $this->readClassAnnotations( $this->fieldsType[$field] );
-
-                            $array = array(
-                                implode( ".", $path ) => $value
-                            );
-
-                            $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
-
-                        }else{
-
-                            if( array_key_exists( $field, $this->fieldsMap ) ){
-
-                                $this->entityFinalFilterPath .= "." . $this->fieldsMap[ $field ];
-
-                                $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
-
-                            }
-
-                            $this->readClassAnnotations( $this->fieldsType[$field] );
-
-                            $array = array(
-                                implode( ".", $path ) => $value
-                            );
-
-                            $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
-
-                        }
-
-                    }
-
-                }
-
-            }else{
-
-                if( array_key_exists( $field, $this->fieldsMap ) ){
-
-                    $this->entityFinalFilterPath .= "." . $this->fieldsMap[ $field ];
-
-                    $this->entityFinalFilterPath = substr( $this->entityFinalFilterPath, 1 );
-
-                    $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
-
-                }
-
-            }
-
-        }
-
-        return $this->arrayMatchedParams;
-    }
-
-    private function matchEntityFieldsWithResourceFields( $array ){
-
-        foreach( $array as $propertyName => $value ){
-
-            if( array_key_exists( $propertyName, $this->fieldsMap ) ){
-
-                $this->arrayMatchedParams[ $this->fieldsMap[ $propertyName ] ] = $value;
-
-
-            }
-
-        }
-
-        return $this->arrayMatchedParams;
     }
 
     private function parseClassNamespace($strClassNamespace){

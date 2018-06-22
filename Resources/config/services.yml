@@ -22,7 +22,7 @@ services:
         arguments: ['@request_stack']
     alc_rest_entity_manager.parameters_procesor:
         class: ALC\RestEntityManager\Services\ParametersProcessor\ParametersProcessor
-        arguments: ['@request_stack']
+        arguments: ['@request_stack','@alc_rest_entity_manager.metadata_class_reader']
     alc_rest_request_parameters_name_override:
         class: ALC\RestEntityManager\Listeners\RequestParameterNameOverrideListener
         arguments: []

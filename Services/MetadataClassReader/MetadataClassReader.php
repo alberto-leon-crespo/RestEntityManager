@@ -15,6 +15,8 @@ class MetadataClassReader
 {
     private $annotationReader;
     private $attributesBag;
+    private $arrayMatchedParams = [];
+    private $entityFinalFilterPath = "";
 
     public function __construct( RequestStack $requestStack )
     {
@@ -115,5 +117,155 @@ class MetadataClassReader
             $this->attributesBag->set( 'alc_entity_rest_client.handler.entityIdValue', $entityIdValue );
             $this->attributesBag->set( 'alc_entity_rest_client.handler.entityIdFieldName', $entityIdFieldName );
         }
+    }
+
+    public function flushMatchedParams(){
+        $this->arrayMatchedParams = [];
+        $this->entityFinalFilterPath = "";
+    }
+
+    public function matchEntityFieldsWithResourcesFieldsRecursive( $array ){
+
+        $arrFieldsMap = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsMap');
+        $fieldsType = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsType');
+
+        foreach( $array as $propertyName => $value ){
+
+            $path = explode( ".", $propertyName );
+
+            $field = array_shift( $path );
+
+            if( strpos( $propertyName, "." ) !== false ){
+
+                if( !empty( $field ) ){
+
+                    if( array_key_exists( $field, $arrFieldsMap ) ){
+
+                        if( class_exists( $fieldsType[$field] ) ){
+
+                            $this->entityFinalFilterPath .= "." . $arrFieldsMap[$field];
+
+                            $this->readClassAnnotations( $fieldsType[$field] );
+
+                            $array = array(
+                                implode( ".", $path ) => $value
+                            );
+
+                            $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
+
+                        }else{
+
+                            if( array_key_exists( $field, $arrFieldsMap ) ){
+
+                                $this->entityFinalFilterPath .= "." . $arrFieldsMap[ $field ];
+
+                                $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
+
+                            }
+
+                            $this->readClassAnnotations( $fieldsType[$field] );
+
+                            $array = array(
+                                implode( ".", $path ) => $value
+                            );
+
+                            $this->matchEntityFieldsWithResourcesFieldsRecursive( $array );
+
+                        }
+
+                    }
+
+                }
+
+            }else{
+
+                if( array_key_exists( $field, $arrFieldsMap ) ){
+
+                    $this->entityFinalFilterPath .= "." . $arrFieldsMap[ $field ];
+
+                    $this->entityFinalFilterPath = substr( $this->entityFinalFilterPath, 1 );
+
+                    $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
+
+                }
+
+            }
+
+        }
+
+        return $this->arrayMatchedParams;
+    }
+
+    public function mathResourceFieldsWithEntityFieldsRecursive( $array ){
+
+        $arrFieldsMapOriginal = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsMap');
+        $arrFieldsMapReversed = array_flip( $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsMap') );
+        $fieldsType = $this->attributesBag->get( 'alc_entity_rest_client.handler.fieldsType');
+
+        foreach( $array as $propertyName => $value ){
+
+            $path = explode( ".", $propertyName );
+
+            $field = array_shift( $path );
+
+            if( strpos( $propertyName, "." ) !== false ){
+
+                if( !empty( $field ) ){
+
+                    if( array_key_exists( $field, $arrFieldsMapReversed ) ){
+
+                        if( class_exists( $fieldsType[$arrFieldsMapReversed[$field]] ) ){
+
+                            $this->entityFinalFilterPath .= "." . $arrFieldsMapReversed[$field];
+
+                            $this->readClassAnnotations( $fieldsType[$arrFieldsMapReversed[$field]] );
+
+                            $array = array(
+                                implode( ".", $path ) => $value
+                            );
+
+                            $this->mathResourceFieldsWithEntityFieldsRecursive( $array );
+
+                        }else{
+
+                            if( array_key_exists( $field, $arrFieldsMapReversed ) ){
+
+                                $this->entityFinalFilterPath .= "." . $arrFieldsMapReversed[ $field ];
+
+                                $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
+
+                            }
+
+                            $this->readClassAnnotations( $fieldsType[$arrFieldsMapReversed[$field]] );
+
+                            $array = array(
+                                implode( ".", $path ) => $value
+                            );
+
+                            $this->mathResourceFieldsWithEntityFieldsRecursive( $array );
+
+                        }
+
+                    }
+
+                }
+
+            }else{
+
+                if( array_key_exists( $field, $arrFieldsMapReversed ) ){
+
+                    $this->entityFinalFilterPath .= "." . $arrFieldsMapReversed[ $field ];
+
+                    $this->entityFinalFilterPath = substr( $this->entityFinalFilterPath, 1 );
+
+                    $this->arrayMatchedParams[ $this->entityFinalFilterPath ] = $value;
+
+                }
+
+            }
+
+        }
+
+        return $this->arrayMatchedParams;
     }
 }
