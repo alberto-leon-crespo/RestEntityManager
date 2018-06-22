@@ -51,6 +51,8 @@ class ParametersProcessor{
 
             $this->metadataClassReader->readClassAnnotations( $classNameSpace );
             $arrParameters += $this->metadataClassReader->matchEntityFieldsWithResourcesFieldsRecursive( $arrParameters );
+            $this->metadataClassReader->flushMatchedParams();
+            $this->metadataClassReader->readClassAnnotations( $classNameSpace );
 
         }
 
@@ -59,11 +61,11 @@ class ParametersProcessor{
             if($mapInfo['origin'] !== null && $mapInfo['destination'] !== null){
                 $arrParameters[$mapInfo['destination']] = $originalValue;
             }else if($mapInfo['origin'] !== null && $mapInfo['interceptor'] !== null){
-//                $classInterceptorInfo = explode("::", $mapInfo['interceptor']);
-//                $classNameSpace = "\\" . $classInterceptorInfo[0];
-//                $classMethodToCall = $classInterceptorInfo[1];
-//                $classCallInstance = new $classNameSpace($arrFieldsMap, $arrFieldsType, $arrFieldsValues);
-//                $arrParameters += $classCallInstance->{$classMethodToCall}($originalValue);
+                $classInterceptorInfo = explode("::", $mapInfo['interceptor']);
+                $classNameSpace = "\\" . $classInterceptorInfo[0];
+                $classMethodToCall = $classInterceptorInfo[1];
+                $classCallInstance = new $classNameSpace($this->metadataClassReader);
+                $arrParameters += $classCallInstance->{$classMethodToCall}($originalValue);
             }
         }
 
