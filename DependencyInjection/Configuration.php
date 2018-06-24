@@ -32,6 +32,7 @@ class Configuration implements ConfigurationInterface
                         ->scalarNode('host')->end()
                         ->scalarNode('session_timeout')->defaultValue(3600)->end()
                         ->variableNode('custom_params')->defaultValue([])->end()
+                        ->variableNode('events_handlers')->defaultValue([])->end()
                         ->arrayNode('avanced')
                             ->beforeNormalization()
                                 ->ifEmpty()
