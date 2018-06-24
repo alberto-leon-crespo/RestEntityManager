@@ -28,6 +28,8 @@ class RestManager
     private $guzzleHttpConnections;
     private $guzzleHttpCookieJar;
     private $logger;
+    private $availableEvents = ['before','complete','error','progress','end'];
+    private $registeredEvents = [];
 
     /**
      * @var $requestLog \GuzzleHttp\Message\RequestInterface
@@ -52,6 +54,8 @@ class RestManager
             'verify' => false
         ]);
 
+        $this->registerEventsHandlers();
+
         return $this;
 
     }
@@ -66,6 +70,35 @@ class RestManager
     public function doRequest( $strPath, $strMethod, $arrParams = array(), array $arrHeaders = array() ){
 
         $arrGuzzleHttpOptions = array();
+
+        if( !empty( $this->registeredEvents ) ){
+
+            foreach( $this->registeredEvents as $event ){
+
+                $arrGuzzleHttpOptions['events'][$event['event']] = function($e) use ($event){
+
+                    $arrEventInfo = explode("::", $event['interceptor']);
+
+                    if( !class_exists( $arrEventInfo[0] ) ){
+                        throw new \InvalidArgumentException("Unable to load " . $arrEventInfo[0]);
+                    }
+
+                    $classInstance = new $arrEventInfo[0]();
+
+                    $reflectionClass = new \ReflectionClass( $classInstance );
+
+                    $reflectionMethod = $reflectionClass->getMethod( $arrEventInfo[1] );
+
+                    $closure = $reflectionMethod->getClosure( $classInstance );
+
+                    if( is_callable( $closure ) ){
+
+                        return call_user_func_array( $closure, [$e, $this->config] );
+
+                    }
+                };
+            }
+        }
 
         if( !empty( $arrParams ) ){
 
@@ -139,7 +172,6 @@ class RestManager
     public function post( $path, $arrParameters = array(), $arrHeaders = array() )
     {
         return $this->doRequest( $path, 'POST', $arrParameters, $arrHeaders );
-
     }
 
     /**
@@ -273,5 +305,15 @@ class RestManager
     private function isJson($string) {
         json_decode($string);
         return (json_last_error() == JSON_ERROR_NONE);
+    }
+
+    private function registerEventsHandlers(){
+        if(count($this->config['events_handlers'])>0){
+            foreach($this->config['events_handlers'] as $handlerName => $eventHandler){
+                if( array_search( strtolower( $eventHandler['event'] ), $this->availableEvents ) !== false ){
+                    $this->registeredEvents[$handlerName] = $eventHandler;
+                }
+            }
+        }
     }
 }
