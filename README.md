@@ -465,8 +465,8 @@ De esta manera si la URL introducida en tu WS es {{URL_BASE}}/usuarios?page=1&li
 Puedes encontrar algunos casos en los que la equivalencia con un parametro especial de destino, no es directa, es decir, un parametro puede equivaler a dos como en el siguiente ejemplo:
 
 |--|--|
-Origen|Destino
-sort=+id|_sort=id&order=asc
+Origen|Destino|
+sort=+id|_sort=id&order=asc|
 
 En estos casos puedes crear un interceptor de parametros de la siguiente manera:
 
