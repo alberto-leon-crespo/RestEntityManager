@@ -26,6 +26,9 @@ de las diferentes conexiones y cargarla en el el cliente rest.
 en las diferentes entidades de la API.
 * *alc_rest_entity_manager.logger*: Servicio encargado de monitorizar y escribir los logs de las peticiones rest
 del manager.
+* *alc_rest_entity_manager.metadata_class_reader*: Se encarga de leer la metainformación de las clases necesaria pra realizar los mapeos.
+* *alc_rest_entity_manager.parameters_procesor*: Se encarga de procesar los parametros de filtrado segun la configuración definida en la conexion rest.
+* *alc_rest_request_parameters_name_override*: Sobreescribe los parametros de la URL en el servicio "request" respetando la notacion de puntos. Ej: "poliza.id"
 
 # Consideraciones previas
 
@@ -77,9 +80,21 @@ alc_rest_entity_manager:
             name: 'default' # El nombre de la conexion
             host: 'https://jsonplaceholder.typicode.com/' # URL base del servicio rest que se va a consultar
             session_timeout: 7200 # Tiempo de expiración de la sesion que hay entre el cliente rest y el webservice de destino
+            avanced:
+                filtering:
+                    ignored_parameters: [_fields,_sort,_page,_limit] #Parametros ignorados del filtrado, no se consideran parametros de filtrado
+                    parameters_map:
+                        maps:
+                          - { origin: _fields, destination: selection } # El campo de origen se mapea al WS como el campo destino indicado
+                          - { origin: _page, destination: _page } # El campo de origen se mapea al WS como el campo destino indicado
+                          - { origin: _limit, destination: _limit } # El campo de origen se mapea al WS como el campo destino indicado
+                          - { origin: _sort, interceptor: ALC\WebServiceBundle\Interceptors\SortParametersInterceptor::parseSortFields } # El campo de origen se transforma por medio de un ParameterInterceptor
             custom_params: # Bloque de parametros de configuración personalizables
-                client_id: ko_0vYcw02JxiMGZ7vSADPOSH-fSDRgSsPJWmYFXu4v437hEk2ELFLOGLBlmY2UWLWMnq
-                client_secret: rl_0vYcwJKtCKicRw5gaD55ux
+                secret_api_key: example1234
+            events_handlers: # Bloque de eventos sobre peticiones.
+                tokens_inject_handler: # Nombre del manejador del evento
+                    event: before # Evento a interceptar
+                    interceptor: 'ALC\WebServiceBundle\Interceptors\TokenInjector::injectToken' # Interceptor de las peticiones
 ```
 
 Si quieres usar el serializador junto con FOSRestBundle es necesario que sobreescribas el serializador estandar con la siguiente configuración.
@@ -418,6 +433,88 @@ class UsersController extends FOSRestController
         return $objResponse;
 ```
 
+# Opciones avanzadas de filtrado
+
+En ocasiones, los parametros que pasamos a la URL no son parametros de filtrado (ordenacion, paginado, etc..). 
+
+Para ello solo hay que indicar que parametros seran ignorados del filtrado y cual es su equivalencia en el WS de destino.
+
+## Equivalencia directa
+
+En este caso la equivalencia con el WS de destino es directa entre el campo de origen y de destino
+
+```yml
+# app/config/config.yml
+...
+            name: 'default'
+            host: 'https://jsonplaceholder.typicode.com/'
+            session_timeout: 7200
+            avanced:
+                filtering:
+                    ignored_parameters: [_fields,_sort,_page,_limit] # Parametros especiales que deben de ser ignorados en los filtrados.
+                    parameters_map: # Mapeo de parametros especiales origen - destino
+                        maps:
+                          - { origin: page, destination: _page } # Campor de origen page, campo de destino _page
+                          - { origin: limit, destination: _limit } # Campor de origen limit, campo de destino _limit
+```
+
+De esta manera si la URL introducida en tu WS es {{URL_BASE}}/usuarios?page=1&limit=5 se solicitaria de la siguiente manera al WS de destino {{URL_BASE}}/users?_page=1&_limit=5
+
+## Equivalencia indirecta
+
+Puedes encontrar algunos casos en los que la equivalencia con un parametro especial de destino, no es directa, es decir, un parametro puede equivaler a dos como en el siguiente ejemplo:
+
+|--|--|
+Origen|Destino
+sort=+id|_sort=id&order=asc
+
+En estos casos puedes crear un interceptor de parametros de la siguiente manera:
+
+```php
+<?php
+namespace ALC\WebServiceBundle\Interceptors;
+use ALC\RestEntityManager\ParameterInterceptor;
+class SortParametersInterceptor extends ParameterInterceptor
+{
+    public function parseSortFields($value)
+    {
+        $firstCharacter = $value[0];
+        $fieldName = substr($value, 1);
+        $order = null;
+        if ($firstCharacter === '-') {
+            $order = 'desc';
+        } elseif ($firstCharacter === '+' || $firstCharacter === ' ') {
+            $order = 'asc';
+        }
+        // Busca las equivalencias entre los parametros de entrada de tu WS y el WS de destino
+        $arrFinalParams = $this->getMetadataClassReader()->matchEntityFieldsWithResourcesFieldsRecursive( [ $fieldName => $order ] );
+        $arrayMatch = array();
+        foreach( $arrFinalParams as $campoOrdenar => $metodoOrdenacion ){
+            $arrayMatch['_sort'] = $campoOrdenar;
+            $arrayMatch['_order'] = $metodoOrdenacion;
+        };
+        return $arrayMatch;
+    }
+}
+```
+
+Para darlo de alta solo tienes que dar de alta la siguiente configuración en la sección "parameters_map":
+
+```yml
+# app/config/config.yml
+...
+            name: 'default'
+            host: 'https://jsonplaceholder.typicode.com/'
+            session_timeout: 7200
+            avanced:
+                filtering:
+                    ignored_parameters: [_fields,_sort,_page,_limit] # Parametros especiales que deben de ser ignorados en los filtrados.
+                    parameters_map: # Mapeo de parametros especiales origen - destino
+                        maps:
+                           - { origin: _sort, interceptor: ALC\WebServiceBundle\Interceptors\SortParametersInterceptor::parseSortFields }
+```
+
+
 # Ejemplos
 
-Para ver mas ejemplos puedes consultar el bundle de ejemplo [ALC\WebServiceBundle](https://github.com/alberto-leon-crespo/rest-entity-manager)
+Puedes consultar el bundle de ejemplo [ALC\WebServiceBundle](https://github.com/alberto-leon-crespo/rest-entity-manager)
