@@ -513,7 +513,51 @@ Para darlo de alta solo tienes que dar de alta la siguiente configuración en la
                         maps:
                            - { origin: _sort, interceptor: ALC\WebServiceBundle\Interceptors\SortParametersInterceptor::parseSortFields }
 ```
+# Interceptores de eventos
 
+Si fuera necesario interceptar un evento de la petición para injectar el token de una api en las cabeceras o alguna otra acción similar, solo tienes que crear un interceptor de solicitudes de la siguiente manera:
+
+```php
+<?php
+
+namespace ALC\WebServiceBundle\Interceptors;
+
+use ALC\RestEntityManager\Interceptors\RequestInterceptor;
+use GuzzleHttp\Event\BeforeEvent;
+
+// La clase debe de extender al objecto ALC\RestEntityManager\Interceptors\RequestInterceptor
+
+class TokenInjector extends RequestInterceptor
+{
+    public function injectToken(BeforeEvent $event, array $arrManagerConfig){
+
+        $apiKey = $arrManagerConfig['custom_params']['secret_api_key'];
+
+        $event->getRequest()->setHeader('X-Api-Key', $apiKey);
+
+        return $event;
+    }
+}
+```
+Una vez creado el interceptor, debes de darlo de alta con la siguiente configuración:
+
+```ỳml
+# app/config/config.yml
+...
+            name: 'default'
+            host: 'https://jsonplaceholder.typicode.com/'
+            session_timeout: 7200
+            avanced:
+                ...
+            events_handlers:
+                tokens_inject_handler:
+                    event: before
+                    interceptor: 'ALC\WebServiceBundle\Interceptors\TokenInjector::injectToken'
+```
+
+Debes de indicar que evento quieres interceptar y la clase y el metodo que interceptaran la solicitud.
+
+Los eventos soportados que se pueden interceptar son los mismos que acepta [Guzzle Http Client](http://docs.guzzlephp.org/en/5.3/events.html#working-with-request-events).
 
 # Ejemplos
 
