@@ -541,7 +541,7 @@ class TokenInjector extends RequestInterceptor
 ```
 Una vez creado el interceptor, debes de darlo de alta con la siguiente configuración:
 
-```ỳml
+```yml
 # app/config/config.yml
 ...
             name: 'default'
