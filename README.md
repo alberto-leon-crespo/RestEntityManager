@@ -561,4 +561,4 @@ Los eventos soportados que se pueden interceptar son los mismos que acepta [Guzz
 
 # Ejemplos
 
-Puedes consultar el bundle de ejemplo [ALC\WebServiceBundle](https://github.com/alberto-leon-crespo/rest-entity-manager)
+Para ver mas ejemplos puedes consultar el bundle de ejemplo [ALC\WebServiceBundle](https://github.com/alberto-leon-crespo/WebServiceBundle)
